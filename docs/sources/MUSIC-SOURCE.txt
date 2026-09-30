@@ -1,0 +1,4 @@
+Background music: paulyudin-baby-baby-music-607610.mp3
+Source: user-provided /Users/ryanalfa/Downloads/music free
+Copied unchanged as background-music.mp3.
+Playback: loop during gameplay, 16% gain, follows Sound on/off.

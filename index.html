@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>One More Little Pony</title>
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div><div class="eyebrow">A little love. A little magic.</div><h1><img class="title-art" data-asset="rainbow" alt="">One More <span>Little Pony.</span></h1></div>
+      <div class="header-tools"><div class="best">Personal best<strong id="best">0</strong></div><button id="soundToggle" type="button" aria-label="Mute music and sound effects" aria-pressed="false">Sound on</button></div>
+    </header>
+    <div class="game-slot">
+    <section class="cabinet" aria-label="One More Little Pony game">
+      <div class="hud">
+        <div class="stat">Unicorns <strong id="score">0</strong></div>
+        <div class="stat">Time left <strong id="timer">60s</strong></div>
+        <div class="stat">Lions <strong id="enemyCount">2</strong></div>
+      </div>
+      <div class="arena">
+        <canvas id="game" width="900" height="560" aria-label="Move the green-glowing queen with the touch joystick, WASD, or arrow keys. Collect pink-glowing unicorns and avoid red-glowing lions."></canvas>
+        <div class="overlay" id="overlay">
+          <div class="panel">
+            <img class="hero-art" data-asset="queen" alt="" aria-hidden="true">
+            <div class="eyebrow" id="label">60 seconds. Find your little ponies.</div>
+            <h2 id="title">One more little pony.</h2>
+            <p class="description" id="description"><span class="keyboard-only">Guide your queen with WASD or arrow keys.</span><span class="touch-only">Drag the joystick to guide your queen.</span><br>Collect unicorns. Dodge lions. Survive 60 seconds.<br>A new lion appears every 10 seconds.</p>
+            <div class="instructions" id="legend"><span><img class="legend-art" data-asset="unicorn" alt="">Collect unicorns</span><span><img class="legend-art" data-asset="lion" alt="">Avoid lions</span></div>
+            <button id="action" type="button" disabled><img id="actionIcon" data-asset="play" alt=""><span id="actionText">Loading magic…</span></button>
+            <div class="hint" id="hint"><span class="keyboard-only">Press Enter to start</span><span class="touch-only">Tap Find ponies to start</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="touch-controls" aria-label="Touch controls">
+        <div id="joystick" class="joystick" role="group" aria-label="Movement joystick: drag in any direction" aria-disabled="true"><span id="joystickKnob" class="joystick-knob"></span></div>
+        <span class="touch-help">Drag to move<br>Release to stop</span>
+        <button id="touchPause" type="button" disabled>Pause</button>
+      </div>
+    </section>
+    </div>
+    <footer><span class="controls"><span class="control-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move</span><span class="control-group"><kbd>Esc</kbd> pause</span></span><span>Keep the magic alive.</span></footer>
+  </main>
+  <audio id="backgroundMusic" src="./assets/audio/music/background-music.mp3?v=baby-baby-607610" preload="auto" loop hidden></audio>
+  <script src="./js/game.js" defer></script>
+
+</body>
+</html>

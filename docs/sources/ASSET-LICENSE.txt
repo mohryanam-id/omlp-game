@@ -1,0 +1,4 @@
+Artwork: Craftpix — Free Alphabet Vector Asset Kit for Education Games
+Original supplied license reference: https://craftpix.net/file-licenses/
+PNG files are unchanged originals from the user-provided asset kit.
+queen.png uses queen0_00000.png from the Idle PNG sequence.

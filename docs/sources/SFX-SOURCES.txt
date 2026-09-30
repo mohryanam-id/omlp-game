@@ -1,0 +1,7 @@
+Source: user-provided 400 Sounds Pack
+Files copied unchanged.
+sfx_start.wav = Musical Effects/music_box_level_start.wav
+sfx_collect.wav = Musical Effects/music_box_chime_quick.wav
+sfx_bounce.wav = UI/pop_1.wav
+sfx_victory.wav = Musical Effects/music_box_level_complete.wav
+sfx_gameover.wav = Musical Effects/music_box_negative_quick.wav
