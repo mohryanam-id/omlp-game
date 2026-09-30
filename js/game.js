@@ -110,6 +110,16 @@
     const CONFIG = { width: 900, height: 560, duration: 60, playerSpeed: 265,
       playerRadius: 24, enemyRadius: 18, enemySpeed: 115, spawnEvery: 10,
       unicornRadius: 17, unicornCount: 6, safeDistance: 180 };
+    const BASE_RADII = { playerRadius: 24, enemyRadius: 18, unicornRadius: 17 };
+    // Minimum visible diameters in CSS pixels, independent of phone resolution.
+    const PHONE_DIAMETERS = { playerRadius: 48, enemyRadius: 40, unicornRadius: 38 };
+    const phoneSizing = window.matchMedia('(max-width: 600px), (pointer: coarse) and (max-height: 600px)');
+    function updateEntitySizes(unitsPerPixel, isPhone) {
+      for (const key of Object.keys(BASE_RADII)) {
+        CONFIG[key] = isPhone ? Math.max(BASE_RADII[key], PHONE_DIAMETERS[key] * unitsPerPixel / 2) : BASE_RADII[key];
+      }
+      CONFIG.safeDistance = Math.max(180, CONFIG.playerRadius + CONFIG.enemyRadius + 60);
+    }
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     const arena = document.querySelector('.arena');
@@ -128,6 +138,7 @@
         const unitsPerPixel = Math.sqrt(WORLD_AREA / (width * height));
         CONFIG.width = width * unitsPerPixel;
         CONFIG.height = height * unitsPerPixel;
+        updateEntitySizes(unitsPerPixel, phoneSizing.matches);
         const moveIntoBounds = (object, radius) => {
           object.x = clamp(object.x / oldWidth * CONFIG.width, radius, CONFIG.width - radius);
           object.y = clamp(object.y / oldHeight * CONFIG.height, radius, CONFIG.height - radius);
@@ -224,7 +235,9 @@
       let unicorn;
       for (let attempt = 0; attempt < 100; attempt++) {
         unicorn = { x: random(margin, CONFIG.width - margin), y: random(margin, CONFIG.height - margin), phase: random(0, Math.PI * 2) };
-        if (distance(unicorn, player) > 45 && unicorns.every(c => distance(c, unicorn) > 35) && enemies.every(e => distance(e, unicorn) > 45)) break;
+        if (distance(unicorn, player) > CONFIG.playerRadius + CONFIG.unicornRadius + 12
+          && unicorns.every(c => distance(c, unicorn) > CONFIG.unicornRadius * 2 + 10)
+          && enemies.every(e => distance(e, unicorn) > CONFIG.enemyRadius + CONFIG.unicornRadius + 12)) break;
       }
       return unicorn;
     }

@@ -107,8 +107,9 @@
     @media (max-height: 550px) {
       :root { --page-space: var(--space-3); --section-gap: var(--space-2); --panel-space: var(--space-3); }
       .panel { gap: var(--space-2); }
-      header .eyebrow, .hero-art, .instructions, .hint, footer { display: none; }
-      main { grid-template-rows: auto minmax(0, 1fr); }
+      header .eyebrow, .hero-art, .instructions, .hint, footer .controls { display: none; }
+      main { grid-template-rows: auto minmax(0, 1fr) auto; }
+      footer { font-size: 10px; line-height: 1.4; }
       h1 { font-size: 23px; margin: 0; } .best strong { display: inline; font-size: 20px; margin-left: var(--space-2); }
       .hud { padding: var(--space-2) var(--space-4); } .stat strong { font-size: 18px; }
       h2 { font-size: 26px; margin: 0; }
