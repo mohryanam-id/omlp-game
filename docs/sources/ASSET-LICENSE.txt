@@ -6,3 +6,5 @@ queen.png uses queen0_00000.png from the Idle PNG sequence.
 Additional kit art: Cat poses Happy, Sad, Thinking, Pointing, Celebrate; UI Back/Next/Trophy/Gold Star/Confetti; WASD Colored alphabet; Sun/Moon/Flower/Kite; backgrounds 1, 2, 4.
 Alte Haas Grotesk Regular/Bold included from the kit Font folder; distribution notice is bundled at assets/fonts/LICENSE.rtf.
 UI reference: https://craftpix.net/freebies/free-alphabet-vector-asset-kit-for-education-games/
+
+Navigation: navigation-star.png = Object/PNG/star.png; touch-shine.png = UI Elements/Effects/PNG/Shine0.png. Original kit images reused for touch destinations and feedback.

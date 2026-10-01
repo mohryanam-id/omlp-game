@@ -17,6 +17,8 @@
   "play": "./assets/images/ui/play.png",
   "replay": "./assets/images/ui/replay.png",
   "reward": "./assets/images/ui/reward.png",
+  "navigationStar": "./assets/images/ui/navigation-star.png",
+  "touchShine": "./assets/images/effects/touch-shine.png",
   "sparkles": "./assets/images/effects/sparkles.png",
   "queen": "./assets/images/characters/queen.png",
   "lion": "./assets/images/characters/lion.png"
@@ -217,10 +219,13 @@
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-    const pointerTarget = { x: 0, y: 0, active: false, pointer: null };
+    const pointerTarget = { x: 0, y: 0, active: false, pointer: null, fade: 0 };
+    const touchMark = { x: 0, y: 0, life: 0 };
+    const POINTER_FEEDBACK = { arrivalFade: .45, rippleDuration: .55 };
     function resetPointerTarget() {
       const pointer = pointerTarget.pointer;
       pointerTarget.active = false; pointerTarget.pointer = null;
+      pointerTarget.fade = 0; touchMark.life = 0;
       if (pointer !== null && canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
     }
     function clearMovement() { keys.clear(); resetPointerTarget(); }
@@ -229,12 +234,17 @@
       pointerTarget.x = clamp((event.clientX - rect.left) / rect.width * CONFIG.width, CONFIG.playerRadius, CONFIG.width - CONFIG.playerRadius);
       pointerTarget.y = clamp((event.clientY - rect.top) / rect.height * CONFIG.height, CONFIG.playerRadius, CONFIG.height - CONFIG.playerRadius);
       pointerTarget.active = true;
+      pointerTarget.fade = POINTER_FEEDBACK.arrivalFade;
     }
     canvas.addEventListener('pointerdown', event => {
       if (state !== 'playing' || event.button !== 0 || pointerTarget.pointer !== null) return;
       event.preventDefault(); keys.clear();
       pointerTarget.pointer = event.pointerId;
       canvas.setPointerCapture(event.pointerId); setPointerTarget(event);
+      const rect = canvas.getBoundingClientRect();
+      touchMark.x = (event.clientX - rect.left) / rect.width * CONFIG.width;
+      touchMark.y = (event.clientY - rect.top) / rect.height * CONFIG.height;
+      touchMark.life = POINTER_FEEDBACK.rippleDuration;
     });
     canvas.addEventListener('pointermove', event => {
       if (event.pointerId !== pointerTarget.pointer) return;
@@ -614,9 +624,51 @@
         if (!defeatReveal) showPanel();
       }
     }
+    // Navigation hints use CSS-pixel sizes, so they stay legible on phones.
+    // Draw beneath characters: this is a direction guide, not a safe-route prediction.
+    function drawPointerFeedback() {
+      if (state !== 'playing') return;
+      const unit = CONFIG.width / Math.max(1, layoutWidth);
+      if (touchMark.life > 0) {
+        const progress = 1 - touchMark.life / POINTER_FEEDBACK.rippleDuration;
+        const ease = 1 - (1 - progress) ** 3;
+        drawSprite('touchShine', touchMark.x, touchMark.y,
+          (reducedMotion.matches ? 24 : 16 + ease * 14) * unit, 0, (1 - progress) ** 2 * .55);
+      }
+      if (pointerTarget.fade <= 0) return;
+      const { x, y } = pointerTarget;
+      const dx = x - player.x, dy = y - player.y, length = Math.hypot(dx, dy);
+      const fade = pointerTarget.fade / POINTER_FEEDBACK.arrivalFade;
+      const opacity = fade * fade * (3 - 2 * fade);
+      const start = CONFIG.playerRadius * .75, end = length - 24 * unit;
+      // Sparse, stationary sparkles suggest direction without resembling collectibles.
+      const count = Math.min(6, Math.floor((end - start) / (34 * unit)));
+      ctx.save();
+      // Alpha-shaped violet shadow separates pale artwork from bright scenery.
+      // Canvas shadow blur uses backing pixels rather than the world transform.
+      const pixelsPerCssPixel = canvas.width / Math.max(1, layoutWidth);
+      ctx.shadowColor = 'rgba(76, 35, 112, .95)';
+      ctx.shadowBlur = 2.5 * pixelsPerCssPixel;
+      ctx.shadowOffsetY = .75 * pixelsPerCssPixel;
+      for (let i = 0; i < count; i++) {
+        const along = (start + (end - start) * (i + .5) / count) / length;
+        drawSprite('sparkles', player.x + dx * along, player.y + dy * along,
+          (16 + i / count * 5) * unit, 0, opacity * .9);
+      }
+      ctx.restore();
+      // Keep the destination steady during drags; only the arrival fades out.
+      drawSprite('touchShine', x, y, 23 * unit, 0, opacity * .22);
+      drawSprite('navigationStar', x, y, 13 * unit, 0, opacity * .72);
+    }
+    function animatePointerFeedback(dt) {
+      if (state !== 'playing') return;
+      touchMark.life = Math.max(0, touchMark.life - dt);
+      if (!pointerTarget.active) pointerTarget.fade = Math.max(0, pointerTarget.fade - dt);
+    }
     function draw() {
       ctx.clearRect(0, 0, CONFIG.width, CONFIG.height);
       if (!assetsReady || navigationHelp.open) return;
+      drawPointerFeedback();
       for (const unicorn of unicorns) {
         // A continuous 2-second turn, with independent phases for each collectible.
         const flip = Math.cos(elapsed * Math.PI + unicorn.phase);
@@ -645,7 +697,7 @@
         accumulator += delta;
         while (accumulator >= 1 / 120 && state === 'playing') { update(1 / 120); accumulator -= 1 / 120; }
       } else accumulator = 0;
-      animateReactions(delta);
+      animateReactions(delta); animatePointerFeedback(delta);
       draw(); requestAnimationFrame(frame);
     }
     applyLanguage();
