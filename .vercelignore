@@ -1,0 +1,9 @@
+.git
+.vercel
+.DS_Store
+node_modules
+.env
+.env.*
+README.md
+docs/
+*.log

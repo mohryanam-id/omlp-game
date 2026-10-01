@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,40 +9,43 @@
 <body>
   <main>
     <header>
-      <div><div class="eyebrow">A little love. A little magic.</div><h1><img class="title-art" data-asset="rainbow" alt="">One More <span>Little Pony.</span></h1></div>
-      <div class="header-tools"><div class="best">Personal best<strong id="best">0</strong></div><button id="soundToggle" type="button" aria-label="Mute music and sound effects" aria-pressed="false">Sound on</button></div>
+      <div><div class="eyebrow" data-i18n="tagline">Petualangan kecil, penuh keajaiban.</div><h1><img class="title-art" data-asset="rainbow" alt="">One More <span>Little Pony.</span></h1></div>
+      <div class="header-tools"><div class="best"><span data-i18n="best">Skor tertinggi</span><strong id="best">0</strong></div><button id="soundToggle" type="button" aria-label="Matikan musik dan efek suara" aria-pressed="false">Sound on</button><button id="pauseToggle" type="button" disabled>Jeda</button><label class="language-control"><span data-i18n="language">Bahasa</span><select id="languageSelect"><option value="id">Indonesia</option><option value="en">English</option></select></label></div>
     </header>
     <div class="game-slot">
     <section class="cabinet" aria-label="One More Little Pony game">
       <div class="hud">
-        <div class="stat">Unicorns <strong id="score">0</strong></div>
-        <div class="stat">Time left <strong id="timer">60s</strong></div>
-        <div class="stat">Lions <strong id="enemyCount">2</strong></div>
+        <div class="stat"><span data-i18n="unicorns">Unicorn</span> <strong id="score">0</strong></div>
+        <div class="stat"><span data-i18n="time">Sisa waktu</span> <strong id="timer">60s</strong></div>
+        <div class="stat"><span data-i18n="lions">Singa</span> <strong id="enemyCount">0</strong></div>
       </div>
       <div class="arena">
-        <canvas id="game" width="900" height="560" aria-label="Move the green-glowing queen with the touch joystick, WASD, or arrow keys. Collect pink-glowing unicorns and avoid red-glowing lions."></canvas>
+        <canvas id="game" data-i18n-aria="canvas" width="900" height="560" aria-label="Klik atau tap titik tujuan untuk menggerakkan ratu. Ambil unicorn dengan glow pink dan hindari singa."></canvas>
         <div class="overlay" id="overlay">
           <div class="panel">
             <img class="hero-art" data-asset="queen" alt="" aria-hidden="true">
-            <div class="eyebrow" id="label">60 seconds. Find your little ponies.</div>
-            <h2 id="title">One more little pony.</h2>
-            <p class="description" id="description"><span class="keyboard-only">Guide your queen with WASD or arrow keys.</span><span class="touch-only">Drag the joystick to guide your queen.</span><br>Collect unicorns. Dodge lions. Survive 60 seconds.<br>A new lion appears every 10 seconds.</p>
-            <div class="instructions" id="legend"><span><img class="legend-art" data-asset="unicorn" alt="">Collect unicorns</span><span><img class="legend-art" data-asset="lion" alt="">Avoid lions</span></div>
-            <button id="action" type="button" disabled><img id="actionIcon" data-asset="play" alt=""><span id="actionText">Loading magic…</span></button>
-            <div class="hint" id="hint"><span class="keyboard-only">Press Enter to start</span><span class="touch-only">Tap Find ponies to start</span></div>
+            <div class="eyebrow" id="label">Kumpulkan unicorn sebanyak-banyaknya!</div>
+            <h2 id="title">One More Little Pony</h2>
+            <p class="description" id="description">Klik atau tap titik tujuan di arena untuk menggerakkan ratu. Drag untuk mengubah arah. Bisa juga pakai joystick, WASD, atau tombol panah.
+Ambil unicorn dan hindari singa selama 1 menit untuk menang. Mulai tanpa singa; satu singa muncul setiap 10 detik.</p>
+            <div class="instructions" id="legend"><span><img class="legend-art" data-asset="unicorn" alt=""><span data-i18n="collect">Kumpulkan unicorn</span></span><span><img class="legend-art" data-asset="lion" alt=""><span data-i18n="avoid">Hindari singa</span></span></div>
+            <label class="duration-control" id="durationControl"><span data-i18n="duration">Durasi</span><select id="durationSelect"><option value="60" data-i18n="minute1">1 menit</option><option value="120" data-i18n="minute2">2 menit</option><option value="180" data-i18n="minute3">3 menit</option></select></label>
+            <button id="action" type="button" disabled><img id="actionIcon" data-asset="play" alt=""><span id="actionText">Loading…</span></button>
+            <div class="hint" id="hint">Pilih Mulai main atau tekan Enter</div>
           </div>
         </div>
       </div>
-      <div class="touch-controls" aria-label="Touch controls">
-        <div id="joystick" class="joystick" role="group" aria-label="Movement joystick: drag in any direction" aria-disabled="true"><span id="joystickKnob" class="joystick-knob"></span></div>
-        <span class="touch-help">Drag to move<br>Release to stop</span>
-        <button id="touchPause" type="button" disabled>Pause</button>
+      <div class="touch-controls" data-i18n-aria="touchControls" aria-label="Kontrol sentuh">
+        <div id="joystick" data-i18n-aria="joystick" class="joystick" role="group" aria-label="Geser joystick ke arah yang kamu mau" aria-disabled="true"><span id="joystickKnob" class="joystick-knob"></span></div>
+        <span class="touch-help" data-i18n="touchHelp">Geser joystick untuk bergerak. Lepas untuk berhenti.</span>
+        <button id="touchPause" type="button" disabled>Jeda</button>
       </div>
     </section>
     </div>
-    <footer><span class="controls"><span class="control-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move</span><span class="control-group"><kbd>Esc</kbd> pause</span></span><span class="creator-credit">Game created by Moh. Ryan Alfa Maulana</span></footer>
+    <footer><span class="controls"><span class="control-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> <span data-i18n="move">gerak</span></span><span class="control-group"><kbd>Esc</kbd> <span data-i18n="pause">jeda</span></span></span><span class="creator-credit" data-i18n="creator">Dibuat oleh Moh. Ryan Alfa Maulana</span></footer>
   </main>
   <audio id="backgroundMusic" src="./assets/audio/music/background-music.mp3?v=baby-baby-607610" preload="auto" loop hidden></audio>
+  <script src="./js/i18n.js" defer></script>
   <script src="./js/game.js" defer></script>
 
 </body>
