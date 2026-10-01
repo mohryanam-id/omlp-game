@@ -1,0 +1,14 @@
+{
+  "appId": "id.mohryanam.omlp",
+  "appName": "One More Unicorn",
+  "webDir": "dist",
+  "backgroundColor": "#f9e5f5",
+  "android": {
+    "backgroundColor": "#f9e5f5"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native"
+    }
+  }
+}

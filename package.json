@@ -1,0 +1,21 @@
+{
+  "name": "one-more-unicorn",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "npm run android:sync && cap open android",
+    "android:apk": "npm run android:sync && node scripts/build-android.mjs assembleDebug",
+    "android:bundle": "npm run android:sync && node scripts/build-android.mjs bundleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "esbuild": "0.28.2"
+  }
+}

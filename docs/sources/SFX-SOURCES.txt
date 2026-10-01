@@ -1,7 +1,16 @@
 Source: user-provided 400 Sounds Pack
-Files copied unchanged.
-sfx_start.wav = Musical Effects/music_box_level_start.wav
-sfx_collect.wav = Musical Effects/music_box_chime_quick.wav
-sfx_bounce.wav = UI/pop_1.wav
-sfx_victory.wav = Musical Effects/music_box_level_complete.wav
-sfx_gameover.wav = Musical Effects/music_box_negative_quick.wav
+Files copied unchanged to assets/audio/sfx/.
+start.wav = Musical Effects/music_box_level_start.wav
+collect.wav = Musical Effects/music_box_chime_quick.wav
+bounce.wav = UI/pop_1.wav (lion spawn only; wall bounces are silent)
+victory.wav = Musical Effects/music_box_level_complete.wav
+gameover.wav = Musical Effects/music_box_negative_quick.wav
+ui-select.wav = UI/select_1.wav (settings, tabs, guide confirmation)
+ui-open.wav = UI/toggle_on.wav (open menu)
+ui-close.wav = UI/toggle_off.wav (close menu)
+countdown.wav = UI/pop_2.wav (last three seconds, once per second)
+
+UX mixing: UI 10–14%, collection 32%, music 16%; UI cooldown 130ms,
+collection effects overlap freely with no cooldown or voice cap. Other effects
+are limited when five voices are active; non-collection cues older than 350ms are discarded. Mute and
+background/pause stop queued effects. No movement/hover/wall-bounce audio.

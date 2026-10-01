@@ -1,0 +1,3 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:left="24dp" android:top="24dp" android:right="24dp" android:bottom="24dp" android:drawable="@drawable/queen" />
+</layer-list>

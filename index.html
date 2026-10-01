@@ -3,47 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>One More Little Pony</title>
+  <title>One More Unicorn</title>
   <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
   <main>
     <header>
-      <div><div class="eyebrow" data-i18n="tagline">Petualangan kecil, penuh keajaiban.</div><h1><img class="title-art" data-asset="rainbow" alt="">One More <span>Little Pony.</span></h1></div>
-      <div class="header-tools"><div class="best"><span data-i18n="best">Skor tertinggi</span><strong id="best">0</strong></div><button id="soundToggle" type="button" aria-label="Matikan musik dan efek suara" aria-pressed="false">Sound on</button><button id="pauseToggle" type="button" disabled>Jeda</button><label class="language-control"><span data-i18n="language">Bahasa</span><select id="languageSelect"><option value="id">Indonesia</option><option value="en">English</option></select></label></div>
+      <h1><img class="brand-art" src="./assets/images/ui/rainbow.png" alt="">One More <span>Unicorn</span></h1>
+      <button id="menuToggle" class="icon-button" type="button" aria-haspopup="dialog" aria-controls="gameMenu" aria-expanded="false" data-i18n-aria="openMenu" aria-label="Buka menu">☰</button>
     </header>
     <div class="game-slot">
-    <section class="cabinet" aria-label="One More Little Pony game">
+    <section class="cabinet" aria-label="One More Unicorn game">
       <div class="hud">
-        <div class="stat"><span data-i18n="unicorns">Unicorn</span> <strong id="score">0</strong></div>
-        <div class="stat"><span data-i18n="time">Sisa waktu</span> <strong id="timer">60s</strong></div>
-        <div class="stat"><span data-i18n="lions">Singa</span> <strong id="enemyCount">0</strong></div>
+        <div class="stat"><img src="./assets/images/characters/unicorn.png" alt=""><span data-i18n="unicorns">Unicorn</span> <strong id="score">0</strong></div>
+        <div class="stat"><img id="timeIcon" src="./assets/images/ui/sun.png" alt=""><span data-i18n="time">Sisa waktu</span> <strong id="timer">60s</strong></div>
+        <div class="stat"><img src="./assets/images/characters/lion.png" alt=""><span data-i18n="lions">Singa</span> <strong id="enemyCount">0</strong></div>
       </div>
+      <div class="time-track" aria-hidden="true"><div id="timeFill"></div></div>
       <div class="arena">
         <canvas id="game" data-i18n-aria="canvas" width="900" height="560" aria-label="Klik atau tap titik tujuan untuk menggerakkan ratu. Ambil unicorn dengan glow pink dan hindari singa."></canvas>
         <div class="overlay" id="overlay">
           <div class="panel">
-            <img class="hero-art" data-asset="queen" alt="" aria-hidden="true">
+            <img class="panel-confetti" src="./assets/images/effects/confetti.png" alt="" aria-hidden="true">
+            <img class="hero-art" data-asset="catHappy" alt="" aria-hidden="true">
             <div class="eyebrow" id="label">Kumpulkan unicorn sebanyak-banyaknya!</div>
-            <h2 id="title">One More Little Pony</h2>
-            <p class="description" id="description">Klik atau tap titik tujuan di arena untuk menggerakkan ratu. Drag untuk mengubah arah. Bisa juga pakai joystick, WASD, atau tombol panah.
-Ambil unicorn dan hindari singa selama 1 menit untuk menang. Mulai tanpa singa; satu singa muncul setiap 10 detik.</p>
+            <h2 id="title">One More Unicorn</h2>
+            <p class="description" id="description">Tap untuk bergerak, drag untuk mengubah arah. Kumpulkan unicorn dan hindari singa selama 1 menit.</p>
             <div class="instructions" id="legend"><span><img class="legend-art" data-asset="unicorn" alt=""><span data-i18n="collect">Kumpulkan unicorn</span></span><span><img class="legend-art" data-asset="lion" alt=""><span data-i18n="avoid">Hindari singa</span></span></div>
-            <label class="duration-control" id="durationControl"><span data-i18n="duration">Durasi</span><select id="durationSelect"><option value="60" data-i18n="minute1">1 menit</option><option value="120" data-i18n="minute2">2 menit</option><option value="180" data-i18n="minute3">3 menit</option></select></label>
+
             <button id="action" type="button" disabled><img id="actionIcon" data-asset="play" alt=""><span id="actionText">Loading…</span></button>
+            <button id="pauseNewGame" class="new-game-button" type="button" hidden><img src="./assets/images/ui/replay.png" alt=""><span data-i18n="newGame">Main baru</span></button>
             <div class="hint" id="hint">Pilih Mulai main atau tekan Enter</div>
           </div>
         </div>
       </div>
-      <div class="touch-controls" data-i18n-aria="touchControls" aria-label="Kontrol sentuh">
-        <div id="joystick" data-i18n-aria="joystick" class="joystick" role="group" aria-label="Geser joystick ke arah yang kamu mau" aria-disabled="true"><span id="joystickKnob" class="joystick-knob"></span></div>
-        <span class="touch-help" data-i18n="touchHelp">Geser joystick untuk bergerak. Lepas untuk berhenti.</span>
-        <button id="touchPause" type="button" disabled>Jeda</button>
-      </div>
     </section>
     </div>
-    <footer><span class="controls"><span class="control-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> <span data-i18n="move">gerak</span></span><span class="control-group"><kbd>Esc</kbd> <span data-i18n="pause">jeda</span></span></span><span class="creator-credit" data-i18n="creator">Dibuat oleh Moh. Ryan Alfa Maulana</span></footer>
   </main>
+  <dialog id="gameMenu" aria-labelledby="menuTitle">
+    <div class="menu-heading"><h2 id="menuTitle" data-i18n="menu">Menu</h2><button id="menuClose" class="icon-button" type="button" data-i18n-aria="closeMenu" aria-label="Tutup menu"><img src="./assets/images/ui/back.png" alt=""></button></div>
+    <nav class="menu-tabs" aria-label="Menu"><button id="settingsTab" type="button" aria-pressed="true" data-i18n="settings">Pengaturan</button><button id="aboutTab" type="button" aria-pressed="false" data-i18n="about">Tentang</button></nav>
+    <section id="settingsPage" class="menu-page">
+      <div class="setting-row"><span data-i18n="audio">Musik & efek suara</span><button id="soundToggle" type="button" aria-pressed="false">Sound on</button></div>
+      <label class="setting-row"><span data-i18n="language">Bahasa</span><select id="languageSelect"><option value="id">Indonesia</option><option value="en">English</option></select></label>
+      <label class="duration-control" id="durationControl"><span data-i18n="duration">Durasi</span><select id="durationSelect"><option value="60" data-i18n="minute1">1 menit</option><option value="120" data-i18n="minute2">2 menit</option><option value="180" data-i18n="minute3">3 menit</option></select></label>
+      <p class="menu-note" data-i18n="durationNote">Durasi bisa diubah sebelum mulai atau setelah game selesai.</p>
+      <fieldset class="scenery"><legend data-i18n="scenery">Pilih suasana</legend><div class="scene-options">
+<button type="button" class="scene-option" data-scene="clouds" aria-pressed="true"><img src="./assets/images/backgrounds/clouds.png" alt=""><span data-i18n="sceneClouds">Awan</span></button><button type="button" class="scene-option" data-scene="meadow" aria-pressed="false"><img src="./assets/images/backgrounds/meadow.png" alt=""><span data-i18n="sceneMeadow">Taman</span></button><button type="button" class="scene-option" data-scene="night" aria-pressed="false"><img src="./assets/images/backgrounds/night.png" alt=""><span data-i18n="sceneNight">Malam</span></button><button type="button" class="scene-option" data-scene="beach" aria-pressed="false"><img src="./assets/images/backgrounds/beach.png" alt=""><span data-i18n="sceneBeach">Pantai</span></button></div></fieldset>
+      <div class="setting-row best"><img class="setting-art" src="./assets/images/ui/trophy.png" alt=""><span data-i18n="best">Skor tertinggi</span><strong id="best">0</strong></div>
+      <button id="pauseToggle" class="menu-resume" type="button" disabled>Lanjut</button>
+      <button id="menuNewGame" class="new-game-button" type="button" hidden><img src="./assets/images/ui/replay.png" alt=""><span data-i18n="newGame">Main baru</span></button>
+    </section>
+    <section id="aboutPage" class="menu-page" hidden>
+      <div class="about-cast"><img src="./assets/images/ui/flower.png" alt=""><img src="./assets/images/mascot/happy.png" alt=""><img src="./assets/images/ui/kite.png" alt=""></div>
+      <h3>One More Unicorn</h3>
+      <p data-i18n="aboutText">Petualangan singkat bersama princess. Kumpulkan unicorn dan hindari singa sampai waktu habis.</p>
+      <h4 data-i18n="howTo">Cara main</h4>
+      <p data-i18n="howToText">Tap tujuan di arena, lalu drag untuk mengubah arah. Di komputer, kamu juga bisa pakai WASD atau tombol panah. Satu singa muncul setiap 10 detik. Buka menu untuk menjeda game.</p>
+      <button id="showNavigation" type="button" data-i18n="showNavigation">Lihat petunjuk navigasi</button>
+      <div class="about-credit"><span data-i18n="createdBy">Dibuat oleh</span><strong>Moh. Ryan Alfa Maulana</strong></div>
+    </section>
+  </dialog>
+  <dialog id="navigationHelp" aria-labelledby="navigationTitle" aria-describedby="navigationIntro">
+    <div class="guide-host"><img src="./assets/images/mascot/pointing.png" alt=""><img class="guide-star" src="./assets/images/ui/gold-star.png" alt=""></div>
+    <div class="menu-heading"><h2 id="navigationTitle" data-i18n="navigationTitle">Cara bergerak</h2></div>
+    <p id="navigationIntro" data-i18n="navigationIntro">Pilih kontrol yang paling nyaman buatmu.</p>
+    <div class="navigation-options">
+      <section><div class="key-guide" aria-hidden="true"><kbd class="letter-key"><img src="./assets/images/letters/w.png" alt="W"></kbd><span><kbd class="letter-key"><img src="./assets/images/letters/a.png" alt="A"></kbd> <kbd class="letter-key"><img src="./assets/images/letters/s.png" alt="S"></kbd> <kbd class="letter-key"><img src="./assets/images/letters/d.png" alt="D"></kbd></span></div><div><h3>WASD</h3><p data-i18n="wasdHelp">W ke atas, A ke kiri, S ke bawah, D ke kanan. Tahan untuk terus bergerak.</p></div></section>
+      <section><div class="key-guide" aria-hidden="true"><kbd>↑</kbd><span><kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd></span></div><div><h3 data-i18n="arrowTitle">Tombol panah</h3><p data-i18n="arrowHelp">Gunakan tombol panah untuk bergerak sesuai arah yang kamu pilih.</p></div></section>
+      <section><div class="touch-symbol" aria-hidden="true"><img src="./assets/images/characters/queen.png" alt=""><span>◎</span></div><div><h3 data-i18n="touchTitle">Touch / mouse</h3><p data-i18n="touchHelp">Tap atau klik tujuan di arena. Drag untuk mengubah tujuan; princess berhenti saat sampai.</p></div></section>
+    </div>
+    <label class="remember-help"><input id="hideNavigation" type="checkbox"><span data-i18n="hideNavigation">Jangan tampilkan lagi</span></label>
+    <button id="navigationDone" class="menu-resume" type="button"><span data-i18n="navigationDone">Oke, mengerti!</span><img src="./assets/images/ui/next.png" alt=""></button>
+  </dialog>
   <audio id="backgroundMusic" src="./assets/audio/music/background-music.mp3?v=baby-baby-607610" preload="auto" loop hidden></audio>
   <script src="./js/i18n.js" defer></script>
   <script src="./js/game.js" defer></script>

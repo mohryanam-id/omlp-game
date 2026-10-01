@@ -7,3 +7,10 @@ node_modules
 README.md
 docs/
 *.log
+
+android/
+dist/
+scripts/native-entry.js
+scripts/build-android.mjs
+capacitor.config.json
+package*.json

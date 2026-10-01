@@ -5,6 +5,7 @@
     const t = (key, values = {}) => window.PONY_I18N[language][key].replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''));
     const languageSelect = document.getElementById('languageSelect');
     const pauseToggle = document.getElementById('pauseToggle');
+    const newGameButtons = ['pauseNewGame', 'menuNewGame'].map(id => document.getElementById(id));
     const durationSelect = document.getElementById('durationSelect');
     const durationControl = document.getElementById('durationControl');
     // Original Craftpix images live under assets/images; paths resolve from the HTML document.
@@ -20,11 +21,26 @@
   "queen": "./assets/images/characters/queen.png",
   "lion": "./assets/images/characters/lion.png"
 };
+    const MASCOTS = { catHappy: 'happy', catSad: 'sad', catThinking: 'thinking', catCelebrate: 'celebrate' };
+    for (const [key, pose] of Object.entries(MASCOTS)) ASSET_DATA[key] = `./assets/images/mascot/${pose}.png`;
     const sprites = {};
     const collisionMasks = {};
     let assetsReady = false;
     document.documentElement.style.setProperty('--arena-art', `url("${new URL(ASSET_DATA.background, document.baseURI).href}")`);
     for (const element of document.querySelectorAll('[data-asset]')) element.src = ASSET_DATA[element.dataset.asset];
+    const SCENES = ['clouds', 'meadow', 'night', 'beach'];
+    let selectedScene = 'clouds';
+    try { const saved = localStorage.getItem('one-more-little-pony.scene'); if (SCENES.includes(saved)) selectedScene = saved; } catch (_) {}
+    function applyScene(scene) {
+      if (!SCENES.includes(scene)) return;
+      selectedScene = scene;
+      document.getElementById('timeIcon').src = `./assets/images/ui/${scene === 'night' ? 'moon' : 'sun'}.png`;
+      document.documentElement.style.setProperty('--arena-art', `url("${new URL(`./assets/images/backgrounds/${scene}.png`, document.baseURI).href}")`);
+      for (const button of document.querySelectorAll('[data-scene]')) button.setAttribute('aria-pressed', String(button.dataset.scene === scene));
+      try { localStorage.setItem('one-more-little-pony.scene', scene); } catch (_) {}
+    }
+    for (const button of document.querySelectorAll('[data-scene]')) button.addEventListener('click', () => { if (button.dataset.scene !== selectedScene) { applyScene(button.dataset.scene); playUi(); } });
+    applyScene(selectedScene);
     const assetsLoaded = Promise.all(Object.entries(ASSET_DATA).map(([name, source]) => new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => {
@@ -39,10 +55,14 @@
     // SFX from the supplied 400 Sounds Pack, stored under assets/audio/sfx.
     const SFX = {
       start: { file: './assets/audio/sfx/start.wav', volume: .45 },
-      collect: { file: './assets/audio/sfx/collect.wav', volume: .55 },
+      collect: { file: './assets/audio/sfx/collect.wav', volume: .32, group: 'collect', cooldown: 0 },
       spawn: { file: './assets/audio/sfx/bounce.wav', volume: .16 },
-      victory: { file: './assets/audio/sfx/victory.wav', volume: .6 },
-      gameover: { file: './assets/audio/sfx/gameover.wav', volume: .5 }
+      victory: { file: './assets/audio/sfx/victory.wav', volume: .5 },
+      gameover: { file: './assets/audio/sfx/gameover.wav', volume: .4 },
+      uiSelect: { file: './assets/audio/sfx/ui-select.wav', volume: .14, group: 'ui', cooldown: 130 },
+      uiOpen: { file: './assets/audio/sfx/ui-open.wav', volume: .12, group: 'ui', cooldown: 130 },
+      uiClose: { file: './assets/audio/sfx/ui-close.wav', volume: .10, group: 'ui', cooldown: 130 },
+      countdown: { file: './assets/audio/sfx/countdown.wav', volume: .10, cooldown: 700 }
     };
     const soundToggle = document.getElementById('soundToggle');
     const backgroundMusic = document.getElementById('backgroundMusic');
@@ -56,6 +76,7 @@
     }
     let muted = false, audioContext = null, audioEpoch = 0;
     const activeSounds = new Set(), soundBuffers = new Map();
+    const lastSoundAt = new Map(), soundGroups = new Map();
     try { muted = localStorage.getItem('one-more-little-pony.muted') === 'true'; } catch (_) {}
     // Download early; decoding and audio activation wait for a user gesture.
     const soundDownloads = Object.fromEntries(Object.entries(SFX).map(([name, effect]) =>
@@ -88,28 +109,33 @@
       backgroundMusic.pause();
       audioEpoch++;
       for (const source of activeSounds) { try { source.stop(); } catch (_) {} }
-      activeSounds.clear();
+      activeSounds.clear(); soundGroups.clear(); lastSoundAt.clear();
     }
     async function playSfx(name) {
-      if (muted || !audioContext) return;
+      if (muted || !audioContext || !SFX[name] || document.hidden) return;
+      const effect = SFX[name], group = effect.group || name, requestedAt = performance.now();
+      // Every pickup gets its own voice, including several in the same frame.
+      if (group !== 'collect' && requestedAt - (lastSoundAt.get(group) ?? -Infinity) < (effect.cooldown ?? 100)) return;
+      lastSoundAt.set(group, requestedAt);
       const epoch = audioEpoch;
       try {
         if (!soundBuffers.has(name)) soundBuffers.set(name, soundDownloads[name].then(bytes =>
           bytes ? audioContext.decodeAudioData(bytes.slice(0)) : null).catch(() => null));
         const buffer = await soundBuffers.get(name);
-        if (!buffer || muted || epoch !== audioEpoch || audioContext.state !== 'running' || activeSounds.size >= 10) return;
+        if (!buffer || muted || epoch !== audioEpoch || audioContext.state !== 'running' || (group !== 'collect' && (activeSounds.size >= 5 || performance.now() - requestedAt > 350)) || (group === 'ui' && [...soundGroups.values()].includes('ui'))) return;
         const source = audioContext.createBufferSource(), gain = audioContext.createGain();
         source.buffer = buffer; gain.gain.value = SFX[name].volume;
         source.connect(gain); gain.connect(audioContext.destination);
-        source.onended = () => { activeSounds.delete(source); source.disconnect(); gain.disconnect(); };
-        activeSounds.add(source); source.start();
+        source.onended = () => { activeSounds.delete(source); soundGroups.delete(source); source.disconnect(); gain.disconnect(); };
+        activeSounds.add(source); soundGroups.set(source, group); source.start();
       } catch (_) { /* Missing or unsupported sound files leave the game playable. */ }
     }
+    function playUi(name = 'uiSelect') { activateAudio(); playSfx(name); }
     soundToggle.addEventListener('click', () => {
       muted = !muted;
       try { localStorage.setItem('one-more-little-pony.muted', String(muted)); } catch (_) {}
       stopSounds(); updateSoundButton();
-      if (!muted) { activateAudio(); playSfx('collect'); playBackgroundMusic(); }
+      if (!muted) { activateAudio(); playSfx('uiSelect'); playBackgroundMusic(); }
       soundToggle.blur();
     });
     updateSoundButton();
@@ -182,6 +208,7 @@
     ui.best.textContent = best;
     let state = 'start', player, enemies = [], unicorns = [], sparks = [];
     let pickups = [];
+    let countdownSecond = 4;
     let elapsed = 0, score = 0, nextSpawn = CONFIG.spawnEvery;
     let lastTime = 0, accumulator = 0;
     const keys = new Set();
@@ -190,24 +217,13 @@
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-    const joystick = document.getElementById('joystick');
-    const joystickKnob = document.getElementById('joystickKnob');
-    const touchPause = document.getElementById('touchPause');
-    const touchInput = { x: 0, y: 0, pointer: null };
-    const touchLayout = window.matchMedia('(any-pointer: coarse), (max-width: 600px)');
-    function resetJoystick() {
-      const pointer = touchInput.pointer;
-      touchInput.pointer = null; touchInput.x = 0; touchInput.y = 0;
-      joystickKnob.style.transform = 'translate(0px, 0px)';
-      if (pointer !== null && joystick.hasPointerCapture(pointer)) joystick.releasePointerCapture(pointer);
-    }
     const pointerTarget = { x: 0, y: 0, active: false, pointer: null };
     function resetPointerTarget() {
       const pointer = pointerTarget.pointer;
       pointerTarget.active = false; pointerTarget.pointer = null;
       if (pointer !== null && canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
     }
-    function clearMovement() { keys.clear(); resetJoystick(); resetPointerTarget(); }
+    function clearMovement() { keys.clear(); resetPointerTarget(); }
     function setPointerTarget(event) {
       const rect = canvas.getBoundingClientRect();
       pointerTarget.x = clamp((event.clientX - rect.left) / rect.width * CONFIG.width, CONFIG.playerRadius, CONFIG.width - CONFIG.playerRadius);
@@ -215,7 +231,7 @@
       pointerTarget.active = true;
     }
     canvas.addEventListener('pointerdown', event => {
-      if (state !== 'playing' || event.button !== 0 || pointerTarget.pointer !== null || touchInput.pointer !== null) return;
+      if (state !== 'playing' || event.button !== 0 || pointerTarget.pointer !== null) return;
       event.preventDefault(); keys.clear();
       pointerTarget.pointer = event.pointerId;
       canvas.setPointerCapture(event.pointerId); setPointerTarget(event);
@@ -233,45 +249,69 @@
       if (event.pointerId === pointerTarget.pointer) resetPointerTarget();
     });
     canvas.addEventListener('contextmenu', event => event.preventDefault());
-    function syncTouchControls() {
-      joystick.setAttribute('aria-disabled', String(state !== 'playing'));
-      touchPause.disabled = state !== 'playing' && state !== 'paused';
-      touchPause.textContent = t(state === 'paused' ? 'resume' : 'pause');
-      pauseToggle.disabled = touchPause.disabled; pauseToggle.textContent = touchPause.textContent;
+    const navigationHelp = document.getElementById('navigationHelp');
+    const hideNavigation = document.getElementById('hideNavigation');
+    const NAVIGATION_KEY = 'one-more-little-pony.hide-navigation';
+    function navigationHidden() {
+      try { return localStorage.getItem(NAVIGATION_KEY) === 'true'; } catch (_) { return false; }
     }
-    function moveJoystick(event) {
-      const rect = joystick.getBoundingClientRect();
-      const travel = Math.max(1, (rect.width - joystickKnob.offsetWidth) / 2 - 3);
-      const dx = event.clientX - rect.left - rect.width / 2;
-      const dy = event.clientY - rect.top - rect.height / 2;
-      const distance = Math.hypot(dx, dy), limit = Math.max(travel, distance);
-      const x = dx / limit, y = dy / limit;
-      const strength = Math.hypot(x, y);
-      const speed = Math.max(0, (strength - .12) / .88);
-      touchInput.x = strength ? x / strength * speed : 0;
-      touchInput.y = strength ? y / strength * speed : 0;
-      joystickKnob.style.transform = `translate(${x * travel}px, ${y * travel}px)`;
+    function openNavigationHelp() {
+      pause(); clearMovement();
+      hideNavigation.checked = navigationHidden();
+      navigationHelp.showModal();
     }
-    joystick.addEventListener('pointerdown', event => {
-      if (state !== 'playing' || touchInput.pointer !== null || event.button !== 0) return;
-      event.preventDefault(); resetPointerTarget(); keys.clear(); touchInput.pointer = event.pointerId;
-      joystick.setPointerCapture(event.pointerId); moveJoystick(event);
+    document.getElementById('navigationDone').addEventListener('click', () => { navigationHelp.close(); playUi(); });
+    hideNavigation.addEventListener('change', () => playUi());
+    navigationHelp.addEventListener('close', () => {
+      try { localStorage.setItem(NAVIGATION_KEY, String(hideNavigation.checked)); } catch (_) {}
+      menuToggle.focus({ preventScroll: true });
     });
-    joystick.addEventListener('pointermove', event => {
-      if (event.pointerId !== touchInput.pointer) return;
-      event.preventDefault(); moveJoystick(event);
+    document.getElementById('showNavigation').addEventListener('click', () => {
+      closeMenu(false); openNavigationHelp(); playUi('uiOpen');
     });
-    for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-      joystick.addEventListener(name, event => { if (event.pointerId === touchInput.pointer) resetJoystick(); });
+    const gameMenu = document.getElementById('gameMenu');
+    const menuToggle = document.getElementById('menuToggle');
+    const settingsTab = document.getElementById('settingsTab');
+    const aboutTab = document.getElementById('aboutTab');
+    function selectMenuPage(about) {
+      document.getElementById('settingsPage').hidden = about;
+      document.getElementById('aboutPage').hidden = !about;
+      settingsTab.setAttribute('aria-pressed', String(!about));
+      aboutTab.setAttribute('aria-pressed', String(about));
     }
-    joystick.addEventListener('contextmenu', event => event.preventDefault());
+    function closeMenu(feedback = true) { gameMenu.close(); if (feedback) playUi('uiClose'); menuToggle.focus({ preventScroll: true }); }
+    menuToggle.addEventListener('click', () => {
+      pause(); clearMovement(); selectMenuPage(false); syncControls();
+      gameMenu.showModal(); menuToggle.setAttribute('aria-expanded', 'true'); playUi('uiOpen');
+    });
+    document.getElementById('menuClose').addEventListener('click', closeMenu);
+    gameMenu.addEventListener('close', () => menuToggle.setAttribute('aria-expanded', 'false'));
+    gameMenu.addEventListener('click', event => {
+      const rect = gameMenu.getBoundingClientRect();
+      if (event.target === gameMenu && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) closeMenu();
+    });
+    settingsTab.addEventListener('click', () => { if (document.getElementById('settingsPage').hidden) { selectMenuPage(false); playUi(); } });
+    aboutTab.addEventListener('click', () => { if (document.getElementById('aboutPage').hidden) { selectMenuPage(true); playUi(); } });
+    function syncControls() {
+      for (const button of newGameButtons) {
+        button.hidden = state !== 'paused';
+        button.disabled = state !== 'paused' || !assetsReady;
+        button.title = t('newGameHint');
+        button.setAttribute('aria-label', `${t('newGame')}. ${t('newGameHint')}`);
+      }
+      pauseToggle.hidden = state !== 'paused';
+      pauseToggle.disabled = state !== 'paused';
+      pauseToggle.textContent = t('resume');
+      durationSelect.disabled = state === 'playing' || state === 'paused';
+    }
     pauseToggle.addEventListener('click', () => {
-      if (state === 'playing') pause(); else if (state === 'paused') resume();
-      pauseToggle.blur();
+      if (state === 'paused') { closeMenu(false); resume(); }
     });
-    touchPause.addEventListener('click', () => {
-      if (state === 'playing') pause(); else if (state === 'paused') resume();
-      touchPause.blur();
+
+    for (const button of newGameButtons) button.addEventListener('click', () => {
+      if (state !== 'paused' || !assetsReady) return;
+      if (gameMenu.open) closeMenu(false);
+      saveBest(); start(); button.blur();
     });
 
     function spawnUnicorn() {
@@ -306,9 +346,13 @@
       enemies.push(enemy);
       playSfx('spawn');
     }
+    let defeatReveal = 0;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function react(object, kind) { object.reaction = kind; object.reactionLife = .65; }
     function resetWorld() {
+      defeatReveal = 0;
       player = { x: CONFIG.width / 2, y: CONFIG.height / 2 };
-      enemies = []; unicorns = []; sparks = []; pickups = []; score = 0; elapsed = 0; nextSpawn = CONFIG.spawnEvery;
+      enemies = []; unicorns = []; sparks = []; pickups = []; score = 0; elapsed = 0; countdownSecond = 4; nextSpawn = CONFIG.spawnEvery;
       for (let i = 0; i < CONFIG.unicornCount; i++) unicorns.push(spawnUnicorn());
       updateHUD();
     }
@@ -317,6 +361,7 @@
       ui.timer.textContent = Math.max(0, Math.ceil(CONFIG.duration - elapsed)) + 's';
       ui.enemyCount.textContent = enemies.length;
       ui.best.textContent = best;
+      document.getElementById('timeFill').style.width = `${Math.max(0, 1 - elapsed / CONFIG.duration) * 100}%`;
     }
     function saveBest() {
       if (score <= best) return;
@@ -324,23 +369,24 @@
       try { localStorage.setItem(STORAGE_KEY, String(best)); } catch (_) {}
     }
     function start() {
-      if (!assetsReady) return;
+      if (!assetsReady || navigationHelp.open) return;
       stopSounds(); activateAudio(); playSfx('start');
       CONFIG.duration = Number(durationSelect.value) || 60;
       clearMovement(); resetWorld(); accumulator = 0; lastTime = performance.now();
       state = 'playing'; ui.overlay.hidden = true; ui.action.blur();
-      playBackgroundMusic(true); syncTouchControls();
+      playBackgroundMusic(true); syncControls();
     }
     function renderPanel() {
       const starting = state === 'start', paused = state === 'paused', won = state === 'victory';
-      durationControl.hidden = paused;
+      durationControl.hidden = false;
       ui.label.textContent = t(starting ? 'startLabel' : paused ? 'pauseLabel' : won ? 'winLabel' : 'loseLabel', { seconds: CONFIG.duration });
       ui.title.textContent = t(starting ? 'startTitle' : paused ? 'pauseTitle' : won ? 'winTitle' : 'loseTitle');
       ui.description.textContent = starting ? t('instructions', { minutes: Number(durationSelect.value) / 60 || 1 }) : paused ? t('pauseText') : t('result', { score, seconds: Math.floor(elapsed), best });
       ui.actionText.textContent = t(assetsFailed ? 'reload' : !assetsReady ? 'loading' : starting ? 'start' : paused ? 'resume' : 'replay');
       ui.hint.textContent = t(assetsFailed ? 'loadError' : starting ? 'startHint' : paused ? 'pauseHint' : 'restartHint');
       ui.actionIcon.src = ASSET_DATA[starting || paused ? 'play' : 'replay'];
-      document.querySelector('.hero-art').src = ASSET_DATA[won ? 'reward' : 'queen'];
+      document.querySelector('.hero-art').src = ASSET_DATA[starting ? 'catHappy' : paused ? 'catThinking' : won ? 'catCelebrate' : 'catSad'];
+      panel.dataset.result = won ? 'victory' : starting ? 'start' : paused ? 'paused' : 'over';
       ui.legend.hidden = !starting;
     }
     function applyLanguage() {
@@ -349,10 +395,11 @@
       languageSelect.setAttribute('aria-label', t('language'));
       for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
       for (const element of document.querySelectorAll('[data-i18n-aria]')) element.setAttribute('aria-label', t(element.dataset.i18nAria));
-      updateSoundButton(); syncTouchControls();
+      updateSoundButton(); syncControls();
       if (state !== 'playing') renderPanel();
     }
     durationSelect.addEventListener('change', () => {
+      playUi();
       if (![60, 120, 180].includes(Number(durationSelect.value))) durationSelect.value = '60';
       if (state === 'start') { CONFIG.duration = Number(durationSelect.value); updateHUD(); }
       renderPanel();
@@ -361,16 +408,17 @@
       if (state === 'playing') pause();
       language = languageSelect.value === 'en' ? 'en' : 'id';
       try { localStorage.setItem(LANGUAGE_KEY, language); } catch (_) {}
-      applyLanguage();
+      applyLanguage(); playUi();
     });
     function showPanel() {
-      renderPanel(); syncTouchControls(); ui.overlay.hidden = false;
-      ui.action.focus({ preventScroll: true });
+      renderPanel(); syncControls(); ui.overlay.hidden = false;
+      if (!gameMenu.open && !navigationHelp.open) ui.action.focus({ preventScroll: true });
     }
     function finish(won) {
       stopSounds(); playSfx(won ? 'victory' : 'gameover');
       state = won ? 'victory' : 'over'; clearMovement(); saveBest(); updateHUD();
-      showPanel();
+      if (!won && player.reaction === 'hurt') { defeatReveal = reducedMotion.matches ? .2 : .65; ui.overlay.hidden = true; syncControls(); }
+      else showPanel();
     }
     function pause() {
       if (state !== 'playing') return;
@@ -382,13 +430,15 @@
       activateAudio();
       state = 'playing'; clearMovement(); accumulator = 0; lastTime = performance.now();
       ui.overlay.hidden = true; ui.action.blur();
-      playBackgroundMusic(); syncTouchControls();
+      playBackgroundMusic(); syncControls(); playUi();
     }
     ui.action.addEventListener('click', () => state === 'paused' ? resume() : start());
     window.addEventListener('keydown', event => {
+      if (gameMenu.open || navigationHelp.open) return;
       const key = event.key.toLowerCase();
+      if (event.target === menuToggle && (key === 'enter' || key === ' ')) return;
       if (event.target === languageSelect || event.target === durationSelect) return;
-      if ((event.target === soundToggle || event.target === touchPause || event.target === pauseToggle) && (key === 'enter' || key === ' ')) return;
+      if ((newGameButtons.includes(event.target) || event.target === soundToggle || event.target === pauseToggle) && (key === 'enter' || key === ' ')) return;
       if (movementKeys.has(key) || key === ' ' || key === 'escape' || key === 'enter') event.preventDefault();
       if (movementKeys.has(key) && state === 'playing') { resetPointerTarget(); keys.add(key); }
       if (event.repeat) return;
@@ -397,12 +447,17 @@
     });
     window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
     window.addEventListener('blur', pause);
+    window.addEventListener('pony:pause', pause);
+    window.addEventListener('pony:back', event => {
+      if (navigationHelp.open) { event.preventDefault(); navigationHelp.close(); return; }
+      if (gameMenu.open) { event.preventDefault(); closeMenu(); return; }
+      if (state === 'playing') { event.preventDefault(); pause(); }
+    });
     document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
     function update(dt) {
       let dx = Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft'));
       let dy = Number(keys.has('s') || keys.has('arrowdown')) - Number(keys.has('w') || keys.has('arrowup'));
-      if (dx === 0 && dy === 0) { dx = touchInput.x; dy = touchInput.y; }
       if (dx === 0 && dy === 0 && pointerTarget.active) {
         const tx = pointerTarget.x - player.x, ty = pointerTarget.y - player.y;
         const remaining = Math.hypot(tx, ty);
@@ -422,11 +477,17 @@
         else if (e.x > CONFIG.width - r) { e.x = 2 * (CONFIG.width - r) - e.x; e.vx = -Math.abs(e.vx); e.squashX = .24; }
         if (e.y < r) { e.y = 2 * r - e.y; e.vy = Math.abs(e.vy); e.squashY = .24; }
         else if (e.y > CONFIG.height - r) { e.y = 2 * (CONFIG.height - r) - e.y; e.vy = -Math.abs(e.vy); e.squashY = .24; }
-        if (touchesPrincess(e)) { finish(false); return; }
+        if (touchesPrincess(e)) {
+          react(player, 'hurt'); react(e, 'caught'); finish(false); return;
+        }
+        // React on contact entry, not every simulation step; unicorns remain collectible.
+        const contacts = new Set(unicorns.filter(u => distance(e, u) < CONFIG.enemyRadius * .75 + CONFIG.unicornRadius * .65));
+        if ([...contacts].some(u => !e.unicornContacts?.has(u))) react(e, 'surprised');
+        e.unicornContacts = contacts;
       }
       for (let i = 0; i < unicorns.length; i++) {
         if (distance(unicorns[i], player) <= CONFIG.unicornRadius + CONFIG.playerRadius) {
-          playSfx('collect');
+          playSfx('collect'); react(player, 'happy');
           const collected = unicorns[i];
           pickups.push({ x: collected.x, y: collected.y, life: .5,
             flip: Math.cos(elapsed * Math.PI + collected.phase) });
@@ -449,6 +510,10 @@
       sparks = sparks.filter(s => s.life > 0);
       elapsed = Math.min(CONFIG.duration, elapsed + dt);
       if (elapsed >= CONFIG.duration - 1e-8) { elapsed = CONFIG.duration; finish(true); return; }
+      const remainingSecond = Math.ceil(CONFIG.duration - elapsed - 1e-8);
+      if (remainingSecond > 0 && remainingSecond <= 3 && remainingSecond < countdownSecond) {
+        countdownSecond = remainingSecond; playSfx('countdown');
+      }
       if (elapsed + 1e-8 >= nextSpawn) { spawnEnemy(); nextSpawn += CONFIG.spawnEvery; }
       updateHUD();
     }
@@ -467,20 +532,21 @@
       const t = elapsed * 35 + enemy.phase;
       const spring = remaining => remaining > 0 ? Math.cos((.24 - remaining) * 25) * (remaining / .24) * .24 : 0;
       const sx = spring(enemy.squashX), sy = spring(enemy.squashY);
+      const pulse = reducedMotion.matches ? 0 : Math.sin((1 - (enemy.reactionLife || 0) / .65) * Math.PI * 3) * (enemy.reactionLife || 0) / .65 * .16;
       return {
         x: clamp(enemy.x + Math.sin(t) * .8, CONFIG.enemyRadius, CONFIG.width - CONFIG.enemyRadius),
         y: clamp(enemy.y + Math.cos(t * 1.3) * .6, CONFIG.enemyRadius, CONFIG.height - CONFIG.enemyRadius),
-        angle: Math.sin(t * .8) * .065, sx: 1 - sx + sy * .5, sy: 1 - sy + sx * .5
+        angle: Math.sin(t * .8) * .065 + pulse * .6, sx: 1 - sx + sy * .5 + pulse, sy: 1 - sy + sx * .5 - pulse
       };
     }
     function touchesPrincess(enemy) {
       if (distance(enemy, player) > (CONFIG.playerRadius + CONFIG.enemyRadius) * 1.5) return false;
       const queen = collisionMasks.queen, lion = collisionMasks.lion;
-      const pose = lionPose(enemy);
+      const pose = lionPose(enemy), princess = princessPose();
       if (!queen || !lion) {
         // Conservative body ellipse when the browser disallows image pixel access.
-        const dx = (pose.x - player.x) / (CONFIG.playerRadius * .56 + CONFIG.enemyRadius * .62);
-        const dy = (pose.y - player.y - CONFIG.playerRadius * .15) / (CONFIG.playerRadius * .72 + CONFIG.enemyRadius * .75);
+        const dx = (pose.x - princess.x) / (CONFIG.playerRadius * .56 + CONFIG.enemyRadius * .62);
+        const dy = (pose.y - princess.y - CONFIG.playerRadius * .15) / (CONFIG.playerRadius * .72 + CONFIG.enemyRadius * .75);
         return dx * dx + dy * dy < 1;
       }
       const image = sprites.lion;
@@ -491,8 +557,11 @@
         if (lion.pixels[(y * lion.size + x) * 4 + 3] < 128) continue;
         const lx = ((x + .5) / lion.size - .5) * width;
         const ly = ((y + .5) / lion.size - .5) * height;
-        const qx = Math.floor(((pose.x + lx * cos - ly * sin - player.x) / (CONFIG.playerRadius * 2) + .5) * queen.size);
-        const qy = Math.floor(((pose.y + lx * sin + ly * cos - player.y) / (CONFIG.playerRadius * 2) + .5) * queen.size);
+        const wx = pose.x + lx * cos - ly * sin - princess.x;
+        const wy = pose.y + lx * sin + ly * cos - princess.y;
+        const pc = Math.cos(princess.angle), ps = Math.sin(princess.angle);
+        const qx = Math.floor(((wx * pc + wy * ps) / (CONFIG.playerRadius * 2 * princess.sx) + .5) * queen.size);
+        const qy = Math.floor(((-wx * ps + wy * pc) / (CONFIG.playerRadius * 2 * princess.sy) + .5) * queen.size);
         if (qx >= 0 && qx < queen.size && qy >= 0 && qy < queen.size && queen.pixels[(qy * queen.size + qx) * 4 + 3] >= 128) return true;
       }
       return false;
@@ -518,9 +587,36 @@
       ctx.scale(scaleX, scaleY);
       ctx.drawImage(image, -width / 2, -height / 2, width, height); ctx.restore();
     }
+    function princessPose() {
+      const life = player.reactionLife || 0, progress = 1 - life / .65;
+      const wave = life > 0 && !reducedMotion.matches ? Math.sin(progress * Math.PI * 3) * life / .65 : 0;
+      const happy = player.reaction === 'happy';
+      return { x: player.x, y: Math.max(CONFIG.playerRadius, player.y - (happy ? Math.abs(wave) * CONFIG.playerRadius * .18 : 0)),
+        angle: wave * (happy ? .1 : .22), sx: 1 + wave * .12, sy: 1 - wave * .12 };
+    }
+    function drawReaction(object, radius) {
+      if (!(object.reactionLife > 0)) return;
+      const symbols = { happy: '♥ +1', hurt: '✦ ! ✦', surprised: '!?', caught: '!' };
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, object.reactionLife * 5);
+      ctx.font = `bold ${Math.max(16, radius * .6)}px system-ui`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4; ctx.strokeStyle = '#fffdf9'; ctx.fillStyle = object.reaction === 'happy' ? '#bc317b' : '#8047a0';
+      const x = clamp(object.x, 32, CONFIG.width - 32), y = Math.max(16, object.y - radius - 12);
+      ctx.strokeText(symbols[object.reaction], x, y); ctx.fillText(symbols[object.reaction], x, y);
+      ctx.restore();
+    }
+    function animateReactions(dt) {
+      if (state !== 'playing' && state !== 'over') return;
+      for (const object of [player, ...enemies]) object.reactionLife = Math.max(0, (object.reactionLife || 0) - dt);
+      if (defeatReveal > 0) {
+        defeatReveal = Math.max(0, defeatReveal - dt);
+        if (!defeatReveal) showPanel();
+      }
+    }
     function draw() {
       ctx.clearRect(0, 0, CONFIG.width, CONFIG.height);
-      if (!assetsReady) return;
+      if (!assetsReady || navigationHelp.open) return;
       for (const unicorn of unicorns) {
         // A continuous 2-second turn, with independent phases for each collectible.
         const flip = Math.cos(elapsed * Math.PI + unicorn.phase);
@@ -529,13 +625,16 @@
       for (const enemy of enemies) {
         const pose = lionPose(enemy);
         drawSprite('lion', pose.x, pose.y, CONFIG.enemyRadius, pose.angle, 1, pose.sx, pose.sy);
+        drawReaction(enemy, CONFIG.enemyRadius);
       }
       for (const pickup of pickups) {
         const fade = pickup.life / .5;
         drawSprite('unicorn', pickup.x, pickup.y - (1 - fade) * 16,
           CONFIG.unicornRadius * (.55 + fade * .45), 0, fade, pickup.flip);
       }
-      drawSprite('queen', player.x, player.y, CONFIG.playerRadius);
+      const princess = princessPose();
+      drawSprite('queen', princess.x, princess.y, CONFIG.playerRadius, princess.angle, 1, princess.sx, princess.sy);
+      drawReaction(player, CONFIG.playerRadius);
       for (const spark of sparks) drawSprite('sparkles', spark.x, spark.y, spark.radius,
         spark.angle, Math.min(1, spark.life / spark.duration * 1.5));
     }
@@ -546,11 +645,13 @@
         accumulator += delta;
         while (accumulator >= 1 / 120 && state === 'playing') { update(1 / 120); accumulator -= 1 / 120; }
       } else accumulator = 0;
+      animateReactions(delta);
       draw(); requestAnimationFrame(frame);
     }
     applyLanguage();
     fitToViewport();
     resetWorld();
+    if (!navigationHidden()) openNavigationHelp();
     const layoutObserver = new ResizeObserver(fitToViewport);
     layoutObserver.observe(arena);
     layoutObserver.observe(panel);
