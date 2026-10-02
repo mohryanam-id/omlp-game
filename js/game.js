@@ -25,6 +25,27 @@
 };
     const MASCOTS = { catHappy: 'happy', catSad: 'sad', catThinking: 'thinking', catCelebrate: 'celebrate' };
     for (const [key, pose] of Object.entries(MASCOTS)) ASSET_DATA[key] = `./assets/images/mascot/${pose}.png`;
+    const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const LEARNING_PAIRS = [
+      ['A', 'apple', 'Apel', 'Apple'], ['B', 'ball', 'Bola', 'Ball'], ['C', 'cat', 'Cat (kucing)', 'Cat'],
+      ['D', 'donut', 'Donat', 'Donut'], ['E', 'egg', 'Egg (telur)', 'Egg'], ['F', 'flower', 'Flower (bunga)', 'Flower'],
+      ['G', 'grape', 'Grape (anggur)', 'Grape'], ['H', 'hat', 'Hat (topi)', 'Hat'], ['I', 'igloo', 'Iglo', 'Igloo'],
+      ['J', 'juice', 'Jus', 'Juice'], ['K', 'key', 'Kunci', 'Key'], ['L', 'leaf', 'Leaf (daun)', 'Leaf'],
+      ['M', 'mango', 'Mangga', 'Mango'], ['N', 'notebook', 'Notebook (buku)', 'Notebook'], ['O', 'orange', 'Orange (jeruk)', 'Orange'],
+      ['P', 'pencil', 'Pensil', 'Pencil'], ['Q', 'queen', 'Queen (ratu)', 'Queen'], ['R', 'rocket', 'Roket', 'Rocket'],
+      ['S', 'star', 'Star (bintang)', 'Star'], ['T', 'train', 'Train (kereta)', 'Train'], ['U', 'unicorn', 'Unicorn', 'Unicorn'],
+      ['V', 'vase', 'Vas', 'Vase'], ['W', 'whale', 'Whale (paus)', 'Whale'], ['X', 'x-ray', 'X-ray', 'X-ray'],
+      ['Y', 'yo-yo', 'Yoyo', 'Yo-yo'], ['Z', 'zebra', 'Zebra', 'Zebra']
+    ].map(([letter, object, id, en]) => ({ letter, object, id, en }));
+    const COUNTING_OBJECTS = [
+      { object: 'apple', id: 'apel', en: 'apples' }, { object: 'ball', id: 'bola', en: 'balls' },
+      { object: 'dog', id: 'anjing', en: 'dogs' }, { object: 'flower', id: 'bunga', en: 'flowers' },
+      { object: 'star', id: 'bintang', en: 'stars' }, { object: 'umbrella', id: 'payung', en: 'umbrellas' },
+      { object: 'xylophone', id: 'xilofon', en: 'xylophones' }
+    ];
+    for (const letter of LETTERS) ASSET_DATA[`letter${letter}`] = `./assets/images/learning/letters/${letter}0.png`;
+    for (const { object } of LEARNING_PAIRS) ASSET_DATA[`learn-${object}`] = `./assets/images/learning/objects/${object}.png`;
+    for (const { object } of COUNTING_OBJECTS) ASSET_DATA[`learn-${object}`] = `./assets/images/learning/objects/${object}.png`;
     const sprites = {};
     const collisionMasks = {};
     let assetsReady = false;
@@ -58,6 +79,7 @@
     const SFX = {
       start: { file: './assets/audio/sfx/start.wav', volume: .45 },
       collect: { file: './assets/audio/sfx/collect.wav', volume: .32, group: 'collect', cooldown: 0 },
+      heart: { file: './assets/audio/sfx/heart-collect.wav', volume: .42, cooldown: 250 },
       spawn: { file: './assets/audio/sfx/bounce.wav', volume: .16 },
       victory: { file: './assets/audio/sfx/victory.wav', volume: .5 },
       gameover: { file: './assets/audio/sfx/gameover.wav', volume: .4 },
@@ -190,6 +212,7 @@
             }
           }
           unicorns.forEach(unicorn => moveIntoBounds(unicorn, CONFIG.unicornRadius + 18));
+          learningTokens.forEach(token => moveIntoBounds(token, learningRadius()));
           sparks = []; pickups = [];
         }
         canvas.width = Math.max(1, Math.round(width * dpr));
@@ -201,8 +224,24 @@
       const menuScale = Math.max(0, Math.min(1, (height - overlayPadding * 2) / (panel.offsetHeight || 1)));
       panel.style.transform = `scale(${menuScale})`;
     }
-    const ui = Object.fromEntries(['score', 'timer', 'enemyCount', 'best', 'overlay',
+    const ui = Object.fromEntries(['score', 'timer', 'enemyCount', 'hearts', 'best', 'overlay',
       'label', 'title', 'description', 'legend', 'action', 'actionText', 'actionIcon', 'hint'].map(id => [id, document.getElementById(id)]));
+    const rescueStars = document.getElementById('rescueStars');
+    const rescueButtons = [...document.querySelectorAll('#rescueStars button')];
+    const missionCard = document.getElementById('learningMission');
+    const missionIcon = document.getElementById('missionIcon');
+    const missionKind = document.getElementById('missionKind');
+    const missionText = document.getElementById('missionText');
+    const missionProgress = document.getElementById('missionProgress');
+    const missionSuccess = document.getElementById('missionSuccess');
+    const lifeProgressEl = document.getElementById('lifeProgress');
+    const alphabetAlbum = document.getElementById('alphabetAlbum');
+    const alphabetGrid = document.getElementById('alphabetGrid');
+    const ALBUM_KEY = 'one-more-unicorn.alphabet-album';
+    const albumLetters = new Set();
+    try {
+      for (const letter of JSON.parse(localStorage.getItem(ALBUM_KEY) || '[]')) if (LETTERS.includes(letter)) albumLetters.add(letter);
+    } catch (_) {}
     const STORAGE_KEY = 'one-more-love.best';
     let best = 0;
     // Storage can be unavailable in private browsers or under file:// restrictions.
@@ -210,14 +249,162 @@
     ui.best.textContent = best;
     let state = 'start', player, enemies = [], unicorns = [], sparks = [];
     let pickups = [];
+    let learningTokens = [], missionState = null, missionNumber = 0, lastMissionLetter = '';
     let countdownSecond = 4;
-    let elapsed = 0, score = 0, nextSpawn = CONFIG.spawnEvery;
+    const STARTING_HEARTS = 3, MAX_HEARTS = 5, UNICORNS_PER_HEART = 5;
+    let elapsed = 0, score = 0, hearts = STARTING_HEARTS, lifeProgress = 0, nextSpawn = CONFIG.spawnEvery;
+    let rescueFound = 0;
     let lastTime = 0, accumulator = 0;
     const keys = new Set();
     const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright']);
     const random = (min, max) => min + Math.random() * (max - min);
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    function pairName(pair) { return language === 'id' ? (pair.id || pair.en) : pair.en; }
+    function shuffled(items) {
+      const result = [...items];
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    }
+    function learningRadius() { return Math.max(27, CONFIG.unicornRadius * 1.05); }
+    function learningPosition(radius = learningRadius()) {
+      const margin = radius + 16, top = Math.max(margin, CONFIG.height * .18);
+      let point = { x: CONFIG.width / 2, y: CONFIG.height / 2 };
+      for (let attempt = 0; attempt < 100; attempt++) {
+        point = { x: random(margin, CONFIG.width - margin), y: random(top, CONFIG.height - margin) };
+        if (distance(point, player) > CONFIG.playerRadius + radius + 35
+          && learningTokens.every(token => distance(token, point) > radius * 2 + 18)
+          && enemies.every(enemy => distance(enemy, point) > CONFIG.enemyRadius + radius + 20)
+          && unicorns.every(unicorn => distance(unicorn, point) > CONFIG.unicornRadius + radius + 14)) break;
+      }
+      return point;
+    }
+    function makeLearningToken(sprite, details = {}) {
+      return { ...learningPosition(), sprite, phase: random(0, Math.PI * 2), cooldown: 0, bounce: 0, ...details };
+    }
+    function saveAlbum() {
+      try { localStorage.setItem(ALBUM_KEY, JSON.stringify([...albumLetters].sort())); } catch (_) {}
+    }
+    function addAlbumLetter(letter) {
+      if (albumLetters.has(letter)) return;
+      albumLetters.add(letter); saveAlbum();
+    }
+    function renderAlbum() {
+      const cards = LETTERS.map(letter => {
+        const found = albumLetters.has(letter), card = document.createElement('div'), image = document.createElement('img');
+        card.className = `album-letter ${found ? 'found' : 'locked'}`;
+        card.setAttribute('aria-label', t(found ? 'letterFound' : 'letterLocked', { letter }));
+        image.src = ASSET_DATA[`letter${letter}`]; image.alt = found ? letter : '';
+        card.append(image); return card;
+      });
+      alphabetGrid.replaceChildren(...cards);
+      document.getElementById('albumCount').textContent = `${albumLetters.size} / 26`;
+    }
+    function updateMissionCard() {
+      const missionComplete = state === 'playing' && missionState?.type === 'complete';
+      missionCard.hidden = state !== 'playing' || !missionState || missionComplete;
+      missionSuccess.hidden = !missionComplete;
+      if (!missionState) return;
+      missionKind.textContent = t('missionShort');
+      if (missionState.type === 'complete') {
+        missionSuccess.setAttribute('aria-label', `${missionState.message}. ${t('nextMission')}`);
+      } else if (missionState.type === 'count') {
+        const name = pairName(missionState.pair);
+        missionIcon.src = ASSET_DATA[`learn-${missionState.pair.object}`];
+        missionText.textContent = `× ${missionState.target}`;
+        missionProgress.textContent = missionState.target === 1 ? '' : '●'.repeat(missionState.collected) + '○'.repeat(missionState.target - missionState.collected);
+        missionCard.setAttribute('aria-label', `${t('collectCount', { count: missionState.target, name })}. ${t('countProgress', { current: missionState.collected, count: missionState.target })}`);
+      } else if (missionState.phase === 'letter') {
+        missionIcon.src = ASSET_DATA[`letter${missionState.pair.letter}`];
+        missionText.textContent = '= ?';
+        missionProgress.textContent = missionState.wrongAttempts >= 2 ? '✨' : missionState.feedback ? '↺' : '● ● ●';
+        missionCard.setAttribute('aria-label', `${t('findLetter', { letter: missionState.pair.letter })}. ${missionState.wrongAttempts >= 2 ? t('hintGlow') : missionState.feedback ? t('tryAnother') : t('chooseLetter')}`);
+      } else {
+        const name = pairName(missionState.pair);
+        missionIcon.src = ASSET_DATA[`learn-${missionState.pair.object}`];
+        missionText.textContent = '× 1';
+        missionProgress.textContent = '';
+        missionCard.setAttribute('aria-label', `${t('findObject', { name })}. ${t('letterPair', { letter: missionState.pair.letter, name })}`);
+      }
+    }
+    function startLearningMission() {
+      learningTokens = [];
+      const pool = LEARNING_PAIRS;
+      if (missionNumber % 2 === 0) {
+        const candidates = pool.filter(pair => pair.letter !== lastMissionLetter);
+        const pair = candidates[Math.floor(Math.random() * candidates.length)] || pool[0];
+        lastMissionLetter = pair.letter;
+        missionState = { type: 'letter-object', phase: 'letter', pair, wrongAttempts: 0, feedback: false };
+        const distractors = shuffled(LETTERS.filter(letter => letter !== pair.letter)).slice(0, 2);
+        for (const letter of shuffled([pair.letter, ...distractors])) {
+          learningTokens.push(makeLearningToken(`letter${letter}`, { letter, correct: letter === pair.letter }));
+        }
+      } else {
+        const pair = COUNTING_OBJECTS[Math.floor(Math.random() * COUNTING_OBJECTS.length)];
+        const target = 1 + Math.floor(Math.random() * 5);
+        missionState = { type: 'count', pair, target, collected: 0 };
+        for (let i = 0; i < target; i++) learningTokens.push(makeLearningToken(`learn-${pair.object}`, { correct: true }));
+      }
+      updateMissionCard();
+    }
+    function rewardLearningMission(x, y, message) {
+      score++; saveBest(); playSfx('collect'); react(player, 'happy');
+      recordUnicornForLife();
+      pickups.push({ x, y, life: .7, flip: 1 });
+      for (let i = 0; i < 14; i++) {
+        const angle = i / 14 * Math.PI * 2, speed = random(35, 105), life = random(.45, .8);
+        sparks.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 25,
+          life, duration: life, angle, spin: random(-4, 4), radius: random(4, 7) });
+      }
+      learningTokens = []; missionNumber++;
+      missionState = { type: 'complete', message, transition: reducedMotion.matches ? .45 : 1.1 };
+      updateMissionCard(); updateHUD();
+    }
+    function touchLearningToken(index) {
+      const token = learningTokens[index];
+      if (!token || token.cooldown > 0 || !missionState || missionState.type === 'complete') return;
+      if (missionState.type === 'count') {
+        learningTokens.splice(index, 1); missionState.collected++; playSfx('uiSelect');
+        if (missionState.collected >= missionState.target) rewardLearningMission(token.x, token.y,
+          t('countComplete', { count: missionState.target, name: pairName(missionState.pair) }));
+        else updateMissionCard();
+        return;
+      }
+      if (missionState.phase === 'letter' && !token.correct) {
+        token.cooldown = 1.2; token.bounce = .55; missionState.feedback = true; missionState.wrongAttempts++;
+        if (missionState.wrongAttempts >= 2) for (const item of learningTokens) item.highlight = item.correct;
+        react(player, 'thinking'); playSfx('uiClose'); updateMissionCard(); return;
+      }
+      if (missionState.phase === 'letter') {
+        addAlbumLetter(missionState.pair.letter); playSfx('uiSelect');
+        missionState.phase = 'object'; learningTokens = [makeLearningToken(`learn-${missionState.pair.object}`, { correct: true })];
+        updateMissionCard(); return;
+      }
+      rewardLearningMission(token.x, token.y,
+        t('pairComplete', { letter: missionState.pair.letter, name: pairName(missionState.pair) }));
+    }
+    function updateLearning(dt) {
+      if (!missionState) return;
+      if (missionState.type === 'complete') {
+        missionState.transition -= dt;
+        if (missionState.transition <= 0) startLearningMission();
+        return;
+      }
+      for (const token of learningTokens) {
+        token.cooldown = Math.max(0, token.cooldown - dt);
+        token.bounce = Math.max(0, token.bounce - dt);
+      }
+      const radius = learningRadius();
+      for (let i = learningTokens.length - 1; i >= 0; i--) {
+        if (distance(learningTokens[i], player) <= radius + CONFIG.playerRadius * .62) {
+          touchLearningToken(i); break;
+        }
+      }
+    }
 
     const pointerTarget = { x: 0, y: 0, active: false, pointer: null, fade: 0 };
     const touchMark = { x: 0, y: 0, life: 0 };
@@ -279,6 +466,12 @@
     document.getElementById('showNavigation').addEventListener('click', () => {
       closeMenu(false); openNavigationHelp(); playUi('uiOpen');
     });
+    document.getElementById('showAlbum').addEventListener('click', () => {
+      closeMenu(false); renderAlbum(); alphabetAlbum.showModal(); playUi('uiOpen');
+      document.getElementById('albumClose').focus({ preventScroll: true });
+    });
+    document.getElementById('albumClose').addEventListener('click', () => alphabetAlbum.close());
+    alphabetAlbum.addEventListener('close', () => { playUi('uiClose'); menuToggle.focus({ preventScroll: true }); });
     const gameMenu = document.getElementById('gameMenu');
     const menuToggle = document.getElementById('menuToggle');
     const settingsTab = document.getElementById('settingsTab');
@@ -312,7 +505,7 @@
       pauseToggle.hidden = state !== 'paused';
       pauseToggle.disabled = state !== 'paused';
       pauseToggle.textContent = t('resume');
-      durationSelect.disabled = state === 'playing' || state === 'paused';
+      durationSelect.disabled = state === 'playing' || state === 'paused' || state === 'rescue';
     }
     pauseToggle.addEventListener('click', () => {
       if (state === 'paused') { closeMenu(false); resume(); }
@@ -361,15 +554,23 @@
     function react(object, kind) { object.reaction = kind; object.reactionLife = .65; }
     function resetWorld() {
       defeatReveal = 0;
-      player = { x: CONFIG.width / 2, y: CONFIG.height / 2 };
-      enemies = []; unicorns = []; sparks = []; pickups = []; score = 0; elapsed = 0; countdownSecond = 4; nextSpawn = CONFIG.spawnEvery;
+      player = { x: CONFIG.width / 2, y: CONFIG.height / 2, invulnerable: 0 };
+      enemies = []; unicorns = []; sparks = []; pickups = []; learningTokens = []; missionState = null; missionNumber = 0;
+      score = 0; hearts = STARTING_HEARTS; lifeProgress = 0; rescueFound = 0; elapsed = 0; countdownSecond = 4; nextSpawn = CONFIG.spawnEvery;
+      for (const button of rescueButtons) button.classList.remove('found');
       for (let i = 0; i < CONFIG.unicornCount; i++) unicorns.push(spawnUnicorn());
+      startLearningMission();
       updateHUD();
     }
     function updateHUD() {
       ui.score.textContent = score;
       ui.timer.textContent = Math.max(0, Math.ceil(CONFIG.duration - elapsed)) + 's';
       ui.enemyCount.textContent = enemies.length;
+      ui.hearts.textContent = '♥'.repeat(hearts) || '♡';
+      ui.hearts.setAttribute('aria-label', `${t('hearts')}: ${hearts}`);
+      const shownProgress = hearts >= MAX_HEARTS ? UNICORNS_PER_HEART : lifeProgress;
+      lifeProgressEl.textContent = '●'.repeat(shownProgress) + '○'.repeat(UNICORNS_PER_HEART - shownProgress);
+      lifeProgressEl.setAttribute('aria-label', hearts >= MAX_HEARTS ? t('lifeFull') : t('lifeProgress', { current: lifeProgress, count: UNICORNS_PER_HEART }));
       ui.best.textContent = best;
       document.getElementById('timeFill').style.width = `${Math.max(0, 1 - elapsed / CONFIG.duration) * 100}%`;
     }
@@ -378,26 +579,42 @@
       best = score;
       try { localStorage.setItem(STORAGE_KEY, String(best)); } catch (_) {}
     }
+    function recordUnicornForLife() {
+      if (hearts >= MAX_HEARTS) return;
+      lifeProgress++;
+      if (lifeProgress < UNICORNS_PER_HEART) return;
+      lifeProgress = 0; hearts++;
+      react(player, 'life'); playSfx('heart');
+      lifeProgressEl.classList.remove('earned'); void lifeProgressEl.offsetWidth; lifeProgressEl.classList.add('earned');
+      for (let i = 0; i < 16; i++) {
+        const angle = i / 16 * Math.PI * 2, speed = random(45, 120), life = random(.55, .9);
+        sparks.push({ x: player.x, y: player.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 28,
+          life, duration: life, angle, spin: random(-4, 4), radius: random(6, 10) });
+      }
+    }
     function start() {
       if (!assetsReady || navigationHelp.open) return;
       stopSounds(); activateAudio(); playSfx('start');
       CONFIG.duration = Number(durationSelect.value) || 60;
       clearMovement(); resetWorld(); accumulator = 0; lastTime = performance.now();
       state = 'playing'; ui.overlay.hidden = true; ui.action.blur();
-      playBackgroundMusic(true); syncControls();
+      updateMissionCard(); playBackgroundMusic(true); syncControls();
     }
     function renderPanel() {
-      const starting = state === 'start', paused = state === 'paused', won = state === 'victory';
-      durationControl.hidden = false;
-      ui.label.textContent = t(starting ? 'startLabel' : paused ? 'pauseLabel' : won ? 'winLabel' : 'loseLabel', { seconds: CONFIG.duration });
-      ui.title.textContent = t(starting ? 'startTitle' : paused ? 'pauseTitle' : won ? 'winTitle' : 'loseTitle');
-      ui.description.textContent = starting ? t('instructions', { minutes: Number(durationSelect.value) / 60 || 1 }) : paused ? t('pauseText') : t('result', { score, seconds: Math.floor(elapsed), best });
+      const starting = state === 'start', paused = state === 'paused', rescuing = state === 'rescue', won = state === 'victory';
+      durationControl.hidden = rescuing;
+      ui.label.textContent = t(rescuing ? 'rescueLabel' : starting ? 'startLabel' : paused ? 'pauseLabel' : won ? 'winLabel' : 'loseLabel', { seconds: CONFIG.duration });
+      ui.title.textContent = t(rescuing ? 'rescueTitle' : starting ? 'startTitle' : paused ? 'pauseTitle' : won ? 'winTitle' : 'loseTitle');
+      ui.description.textContent = rescuing ? t('rescueText') : starting ? t('instructions', { minutes: Number(durationSelect.value) / 60 || 1 }) : paused ? t('pauseText') : t('result', { score, seconds: Math.floor(elapsed), best });
       ui.actionText.textContent = t(assetsFailed ? 'reload' : !assetsReady ? 'loading' : starting ? 'start' : paused ? 'resume' : 'replay');
-      ui.hint.textContent = t(assetsFailed ? 'loadError' : starting ? 'startHint' : paused ? 'pauseHint' : 'restartHint');
+      ui.hint.textContent = t(rescuing ? 'rescueHint' : assetsFailed ? 'loadError' : starting ? 'startHint' : paused ? 'pauseHint' : 'restartHint');
       ui.actionIcon.src = ASSET_DATA[starting || paused ? 'play' : 'replay'];
-      document.querySelector('.hero-art').src = ASSET_DATA[starting ? 'catHappy' : paused ? 'catThinking' : won ? 'catCelebrate' : 'catSad'];
-      panel.dataset.result = won ? 'victory' : starting ? 'start' : paused ? 'paused' : 'over';
+      document.querySelector('.hero-art').src = ASSET_DATA[starting || rescuing ? 'catHappy' : paused ? 'catThinking' : won ? 'catCelebrate' : 'catSad'];
+      panel.dataset.result = won ? 'victory' : starting ? 'start' : paused ? 'paused' : rescuing ? 'rescue' : 'over';
       ui.legend.hidden = !starting;
+      rescueStars.hidden = !rescuing;
+      ui.action.hidden = rescuing;
+      updateMissionCard();
     }
     function applyLanguage() {
       document.documentElement.lang = language;
@@ -405,7 +622,11 @@
       languageSelect.setAttribute('aria-label', t('language'));
       for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
       for (const element of document.querySelectorAll('[data-i18n-aria]')) element.setAttribute('aria-label', t(element.dataset.i18nAria));
+      rescueStars.setAttribute('aria-label', t('rescueStars'));
+      rescueButtons.forEach((button, index) => button.setAttribute('aria-label', `${t('rescueStars')} ${index + 1}`));
       updateSoundButton(); syncControls();
+      updateMissionCard();
+      if (alphabetAlbum.open) renderAlbum();
       if (state !== 'playing') renderPanel();
     }
     durationSelect.addEventListener('change', () => {
@@ -422,13 +643,59 @@
     });
     function showPanel() {
       renderPanel(); syncControls(); ui.overlay.hidden = false;
-      if (!gameMenu.open && !navigationHelp.open) ui.action.focus({ preventScroll: true });
+      if (!gameMenu.open && !navigationHelp.open) (state === 'rescue' ? rescueButtons[0] : ui.action)?.focus({ preventScroll: true });
     }
     function finish(won) {
       stopSounds(); playSfx(won ? 'victory' : 'gameover');
       state = won ? 'victory' : 'over'; clearMovement(); saveBest(); updateHUD();
       if (!won && player.reaction === 'hurt') { defeatReveal = reducedMotion.matches ? .2 : .65; ui.overlay.hidden = true; syncControls(); }
       else showPanel();
+    }
+    function resumeFromRescue() {
+      hearts = 1;
+      player.invulnerable = 2.5;
+      player.x = CONFIG.width / 2; player.y = CONFIG.height / 2;
+      // Give the child a calm, predictable space when play resumes.
+      enemies.forEach((enemy, index) => {
+        enemy.x = index % 2 ? CONFIG.enemyRadius : CONFIG.width - CONFIG.enemyRadius;
+        enemy.y = index % 4 < 2 ? CONFIG.enemyRadius : CONFIG.height - CONFIG.enemyRadius;
+        enemy.unicornContacts = new Set();
+      });
+      state = 'playing'; ui.overlay.hidden = true; rescueStars.hidden = true;
+      accumulator = 0; lastTime = performance.now();
+      updateHUD(); updateMissionCard(); syncControls(); playBackgroundMusic();
+    }
+    function collectRescueStar(index = rescueFound) {
+      if (state !== 'rescue') return;
+      const button = rescueButtons[index];
+      if (!button || button.classList.contains('found')) return;
+      button.classList.add('found'); rescueFound++; playUi();
+      if (rescueFound >= rescueButtons.length) resumeFromRescue();
+      else rescueButtons.find(item => !item.classList.contains('found'))?.focus({ preventScroll: true });
+    }
+    rescueButtons.forEach((button, index) => button.addEventListener('click', () => collectRescueStar(index)));
+    function beginRescue() {
+      state = 'rescue'; rescueFound = 0; clearMovement(); stopSounds();
+      for (const button of rescueButtons) button.classList.remove('found');
+      playSfx('start'); updateHUD(); showPanel();
+    }
+    function dropCollectedUnicorn() {
+      if (score <= 0) return;
+      score--;
+      const dropped = spawnUnicorn();
+      dropped.dropped = true;
+      unicorns.push(dropped);
+    }
+    function handleLionTouch(enemy) {
+      if (player.invulnerable > 0) return;
+      hearts = Math.max(0, hearts - 1); player.invulnerable = 2;
+      react(player, 'hurt'); react(enemy, 'caught'); dropCollectedUnicorn();
+      const angle = Math.atan2(enemy.y - player.y, enemy.x - player.x) || 0;
+      const reboundSpeed = Math.max(CONFIG.enemySpeed, Math.hypot(enemy.vx, enemy.vy));
+      enemy.vx = Math.cos(angle) * reboundSpeed;
+      enemy.vy = Math.sin(angle) * reboundSpeed;
+      playSfx('uiClose'); updateHUD();
+      if (!hearts) beginRescue();
     }
     function pause() {
       if (state !== 'playing') return;
@@ -440,7 +707,7 @@
       activateAudio();
       state = 'playing'; clearMovement(); accumulator = 0; lastTime = performance.now();
       ui.overlay.hidden = true; ui.action.blur();
-      playBackgroundMusic(); syncControls(); playUi();
+      updateMissionCard(); playBackgroundMusic(); syncControls(); playUi();
     }
     ui.action.addEventListener('click', () => state === 'paused' ? resume() : start());
     window.addEventListener('keydown', event => {
@@ -453,12 +720,14 @@
       if (movementKeys.has(key) && state === 'playing') { resetPointerTarget(); keys.add(key); }
       if (event.repeat) return;
       if (key === 'escape') { if (state === 'playing') pause(); else if (state === 'paused') resume(); }
-      if (key === 'enter' && state !== 'playing') state === 'paused' ? resume() : start();
+      if (key === 'enter' && state === 'rescue') collectRescueStar();
+      else if (key === 'enter' && state !== 'playing') state === 'paused' ? resume() : start();
     });
     window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
     window.addEventListener('blur', pause);
     window.addEventListener('pony:pause', pause);
     window.addEventListener('pony:back', event => {
+      if (alphabetAlbum.open) { event.preventDefault(); alphabetAlbum.close(); return; }
       if (navigationHelp.open) { event.preventDefault(); navigationHelp.close(); return; }
       if (gameMenu.open) { event.preventDefault(); closeMenu(); return; }
       if (state === 'playing') { event.preventDefault(); pause(); }
@@ -466,6 +735,7 @@
     document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
     function update(dt) {
+      player.invulnerable = Math.max(0, (player.invulnerable || 0) - dt);
       let dx = Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft'));
       let dy = Number(keys.has('s') || keys.has('arrowdown')) - Number(keys.has('w') || keys.has('arrowup'));
       if (dx === 0 && dy === 0 && pointerTarget.active) {
@@ -487,14 +757,15 @@
         else if (e.x > CONFIG.width - r) { e.x = 2 * (CONFIG.width - r) - e.x; e.vx = -Math.abs(e.vx); e.squashX = .24; }
         if (e.y < r) { e.y = 2 * r - e.y; e.vy = Math.abs(e.vy); e.squashY = .24; }
         else if (e.y > CONFIG.height - r) { e.y = 2 * (CONFIG.height - r) - e.y; e.vy = -Math.abs(e.vy); e.squashY = .24; }
-        if (touchesPrincess(e)) {
-          react(player, 'hurt'); react(e, 'caught'); finish(false); return;
+        if (player.invulnerable <= 0 && touchesPrincess(e)) {
+          handleLionTouch(e); return;
         }
         // React on contact entry, not every simulation step; unicorns remain collectible.
         const contacts = new Set(unicorns.filter(u => distance(e, u) < CONFIG.enemyRadius * .75 + CONFIG.unicornRadius * .65));
         if ([...contacts].some(u => !e.unicornContacts?.has(u))) react(e, 'surprised');
         e.unicornContacts = contacts;
       }
+      updateLearning(dt);
       for (let i = 0; i < unicorns.length; i++) {
         if (distance(unicorns[i], player) <= CONFIG.unicornRadius + CONFIG.playerRadius) {
           playSfx('collect'); react(player, 'happy');
@@ -508,7 +779,9 @@
               vy: Math.sin(angle) * speed - 30, life, duration: life,
               angle: random(0, Math.PI * 2), spin: random(-5, 5), radius: random(3, 6) });
           }
-          score++; saveBest(); unicorns[i] = spawnUnicorn();
+          score++; saveBest(); recordUnicornForLife();
+          if (collected.dropped) { unicorns.splice(i, 1); i--; }
+          else unicorns[i] = spawnUnicorn();
         }
       }
       for (const s of sparks) {
@@ -606,13 +879,14 @@
     }
     function drawReaction(object, radius) {
       if (!(object.reactionLife > 0)) return;
-      const symbols = { happy: '♥ +1', hurt: '✦ ! ✦', surprised: '!?', caught: '!' };
+      const symbols = { happy: '🦄 +1', life: '♥ +1', hurt: '✦ ! ✦', thinking: '…?', surprised: '!?', caught: '!' };
       ctx.save();
       ctx.globalAlpha = Math.min(1, object.reactionLife * 5);
       ctx.font = `bold ${Math.max(16, radius * .6)}px system-ui`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.lineWidth = 4; ctx.strokeStyle = '#fffdf9'; ctx.fillStyle = object.reaction === 'happy' ? '#bc317b' : '#8047a0';
       const x = clamp(object.x, 32, CONFIG.width - 32), y = Math.max(16, object.y - radius - 12);
+      ctx.fillStyle = ['happy', 'life'].includes(object.reaction) ? '#bc317b' : '#8047a0';
       ctx.strokeText(symbols[object.reaction], x, y); ctx.fillText(symbols[object.reaction], x, y);
       ctx.restore();
     }
@@ -665,10 +939,28 @@
       touchMark.life = Math.max(0, touchMark.life - dt);
       if (!pointerTarget.active) pointerTarget.fade = Math.max(0, pointerTarget.fade - dt);
     }
+    function drawLearningTokens() {
+      if (state !== 'playing') return;
+      const radius = learningRadius();
+      for (const token of learningTokens) {
+        const bob = reducedMotion.matches ? 0 : Math.sin(elapsed * 3 + token.phase) * 3;
+        const bounce = token.bounce > 0 && !reducedMotion.matches ? Math.sin((.55 - token.bounce) * 24) * token.bounce * 10 : 0;
+        const y = token.y + bob - Math.abs(bounce);
+        ctx.save();
+        const halo = ctx.createRadialGradient(token.x, y, radius * .2, token.x, y, radius * 1.3);
+        halo.addColorStop(0, token.highlight ? '#fff3a6dd' : '#e5d4ffcc');
+        halo.addColorStop(.65, token.highlight ? '#ffd75a80' : '#ffffff70');
+        halo.addColorStop(1, '#ffffff00');
+        ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(token.x, y, radius * 1.3, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        drawSprite(token.sprite, token.x, y, radius, 0, token.cooldown > 0 ? .58 : 1);
+      }
+    }
     function draw() {
       ctx.clearRect(0, 0, CONFIG.width, CONFIG.height);
       if (!assetsReady || navigationHelp.open) return;
       drawPointerFeedback();
+      drawLearningTokens();
       for (const unicorn of unicorns) {
         // A continuous 2-second turn, with independent phases for each collectible.
         const flip = Math.cos(elapsed * Math.PI + unicorn.phase);
@@ -685,7 +977,8 @@
           CONFIG.unicornRadius * (.55 + fade * .45), 0, fade, pickup.flip);
       }
       const princess = princessPose();
-      drawSprite('queen', princess.x, princess.y, CONFIG.playerRadius, princess.angle, 1, princess.sx, princess.sy);
+      const queenOpacity = player.invulnerable > 0 && !reducedMotion.matches && Math.floor(player.invulnerable * 8) % 2 ? .48 : 1;
+      drawSprite('queen', princess.x, princess.y, CONFIG.playerRadius, princess.angle, queenOpacity, princess.sx, princess.sy);
       drawReaction(player, CONFIG.playerRadius);
       for (const spark of sparks) drawSprite('sparkles', spark.x, spark.y, spark.radius,
         spark.angle, Math.min(1, spark.life / spark.duration * 1.5));

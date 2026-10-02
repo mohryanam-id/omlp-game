@@ -2,6 +2,7 @@ Source: user-provided 400 Sounds Pack
 Files copied unchanged to assets/audio/sfx/.
 start.wav = Musical Effects/music_box_level_start.wav
 collect.wav = Musical Effects/music_box_chime_quick.wav
+heart-collect.wav = Items/heart_collect.wav (bonus heart after five unicorns)
 bounce.wav = UI/pop_1.wav (lion spawn only; wall bounces are silent)
 victory.wav = Musical Effects/music_box_level_complete.wav
 gameover.wav = Musical Effects/music_box_negative_quick.wav

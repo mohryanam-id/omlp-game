@@ -78,7 +78,13 @@ HTML rewrite is needed for this game.
 - Language: Indonesian by default. Choose Indonesia or English in Settings;
   the preference is saved. Switching language during play pauses the game.
 - Princess reacts to pickups and hits; lions react on contact with unicorns or the princess.
-  A brief impact animation plays before game-over. Reduced-motion preferences are respected.
+  Reduced-motion preferences are respected.
+- Cozy play is the default: the princess has three hearts, a hit releases one collected
+  unicorn, and a short immunity window prevents repeated hits. When all hearts are gone,
+  touching three rescue stars restores one heart and safely continues the same game.
+- Learning missions alternate between matching a letter with an illustrated object and
+  counting 1–5 objects. A different letter gives a gentle hint without a penalty; two
+  attempts make the target glow. Correct letters remain saved in the A–Z album.
 - Gentle UI cues accompany menu opening/closing and changed settings. Each unicorn pickup plays its own overlapping sound; lion spawns have a short cue, and the final three seconds have soft ticks.
   Movement and wall bounces are silent; pause/mute cancels pending cues.
 - Sound on/off controls both music and SFX. Audio starts after a user interaction.

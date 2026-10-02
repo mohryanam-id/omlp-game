@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>One More Unicorn</title>
-  <link rel="stylesheet" href="./css/styles.css">
+  <link rel="stylesheet" href="./css/styles.css?v=20261002-edu8">
 </head>
 <body>
   <main>
@@ -17,23 +17,37 @@
       <div class="hud">
         <div class="stat"><img src="./assets/images/characters/unicorn.png" alt=""><span data-i18n="unicorns">Unicorn</span> <strong id="score">0</strong></div>
         <div class="stat"><img id="timeIcon" src="./assets/images/ui/sun.png" alt=""><span data-i18n="time">Sisa waktu</span> <strong id="timer">60s</strong></div>
+        <div class="stat heart-stat"><span aria-hidden="true">♥</span><span data-i18n="hearts">Hati</span> <strong id="hearts" aria-live="polite">♥♥♥</strong><span class="life-progress" id="lifeProgress" aria-live="polite">○○○○○</span></div>
         <div class="stat"><img src="./assets/images/characters/lion.png" alt=""><span data-i18n="lions">Singa</span> <strong id="enemyCount">0</strong></div>
       </div>
       <div class="time-track" aria-hidden="true"><div id="timeFill"></div></div>
       <div class="arena">
-        <canvas id="game" data-i18n-aria="canvas" width="900" height="560" aria-label="Klik atau tap titik tujuan untuk menggerakkan ratu. Ambil unicorn dengan glow pink dan hindari singa."></canvas>
+        <canvas id="game" data-i18n-aria="canvas" width="900" height="560" aria-label="Gerakkan princess untuk menyelesaikan misi huruf, benda, dan berhitung sambil menghindari singa."></canvas>
+        <aside class="learning-mission" id="learningMission" hidden aria-live="polite">
+          <img id="missionIcon" src="./assets/images/learning/letters/A0.png" alt="">
+          <div><span id="missionKind">Misi belajar</span><strong id="missionText">Cari huruf A</strong><small id="missionProgress"></small></div>
+        </aside>
+        <div class="mission-success" id="missionSuccess" hidden role="status" aria-live="polite">
+          <img src="./assets/images/ui/gold-star.png" alt="">
+        </div>
         <div class="overlay" id="overlay">
           <div class="panel">
             <img class="panel-confetti" src="./assets/images/effects/confetti.png" alt="" aria-hidden="true">
             <img class="hero-art" data-asset="catHappy" alt="" aria-hidden="true">
-            <div class="eyebrow" id="label">Kumpulkan unicorn sebanyak-banyaknya!</div>
+            <div class="eyebrow" id="label">Belajar sambil bertualang!</div>
             <h2 id="title">One More Unicorn</h2>
-            <p class="description" id="description">Tap untuk bergerak, drag untuk mengubah arah. Kumpulkan unicorn dan hindari singa selama 1 menit.</p>
-            <div class="instructions" id="legend"><span><img class="legend-art" data-asset="unicorn" alt=""><span data-i18n="collect">Kumpulkan unicorn</span></span><span><img class="legend-art" data-asset="lion" alt=""><span data-i18n="avoid">Hindari singa</span></span></div>
+            <p class="description" id="description">Lihat gambar → pilih jawaban → dapatkan unicorn!</p>
+            <div class="instructions" id="legend"><span><img class="legend-art" src="./assets/images/learning/objects/notebook.png" alt=""><span data-i18n="collect">Selesaikan misi</span></span><span><img class="legend-art" data-asset="lion" alt=""><span data-i18n="avoid">Jaga hati dari singa</span></span></div>
 
-            <button id="action" type="button" disabled><img id="actionIcon" data-asset="play" alt=""><span id="actionText">Loading…</span></button>
+            <div class="rescue-stars" id="rescueStars" hidden aria-label="Bintang penyelamat">
+              <button type="button" aria-label="Bintang penyelamat 1"><img src="./assets/images/ui/gold-star.png" alt=""></button>
+              <button type="button" aria-label="Bintang penyelamat 2"><img src="./assets/images/ui/gold-star.png" alt=""></button>
+              <button type="button" aria-label="Bintang penyelamat 3"><img src="./assets/images/ui/gold-star.png" alt=""></button>
+            </div>
+
+            <button id="action" type="button" disabled><img id="actionIcon" data-asset="play" alt=""><span id="actionText">Memuat…</span></button>
             <button id="pauseNewGame" class="new-game-button" type="button" hidden><img src="./assets/images/ui/replay.png" alt=""><span data-i18n="newGame">Main baru</span></button>
-            <div class="hint" id="hint">Pilih Mulai main atau tekan Enter</div>
+            <div class="hint" id="hint">Pilih Mulai belajar atau tekan Enter</div>
           </div>
         </div>
       </div>
@@ -57,12 +71,19 @@
     <section id="aboutPage" class="menu-page" hidden>
       <div class="about-cast"><img src="./assets/images/ui/flower.png" alt=""><img src="./assets/images/mascot/happy.png" alt=""><img src="./assets/images/ui/kite.png" alt=""></div>
       <h3>One More Unicorn</h3>
-      <p data-i18n="aboutText">Petualangan singkat bersama princess. Kumpulkan unicorn dan hindari singa sampai waktu habis.</p>
+      <p data-i18n="aboutText">Petualangan belajar bersama princess. Temukan huruf, pasangkan benda, berhitung, dan kumpulkan unicorn.</p>
       <h4 data-i18n="howTo">Cara main</h4>
-      <p data-i18n="howToText">Tap tujuan di arena, lalu drag untuk mengubah arah. Di komputer, kamu juga bisa pakai WASD atau tombol panah. Satu singa muncul setiap 10 detik. Buka menu untuk menjeda game.</p>
+      <p data-i18n="howToText">Tap tujuan di arena, lalu drag untuk mengubah arah. Kamu punya tiga hati. Jika hati habis, temukan tiga bintang untuk melanjutkan petualangan.</p>
       <button id="showNavigation" type="button" data-i18n="showNavigation">Lihat petunjuk navigasi</button>
+      <button id="showAlbum" type="button"><img src="./assets/images/learning/objects/notebook.png" alt=""><span data-i18n="openAlbum">Buka album huruf</span></button>
       <div class="about-credit"><span data-i18n="createdBy">Dibuat oleh</span><strong>Moh. Ryan Alfa Maulana</strong></div>
     </section>
+  </dialog>
+  <dialog id="alphabetAlbum" aria-labelledby="albumTitle">
+    <div class="menu-heading"><h2 id="albumTitle" data-i18n="albumTitle">Album Huruf</h2><button id="albumClose" class="icon-button" type="button" data-i18n-aria="closeAlbum" aria-label="Tutup album"><img src="./assets/images/ui/back.png" alt=""></button></div>
+    <p class="album-intro" data-i18n="albumIntro">Huruf yang ditemukan akan tersimpan di sini.</p>
+    <div class="album-summary"><img src="./assets/images/ui/gold-star.png" alt=""><strong id="albumCount">0 / 26</strong><span data-i18n="lettersFound">huruf ditemukan</span></div>
+    <div class="alphabet-grid" id="alphabetGrid"></div>
   </dialog>
   <dialog id="navigationHelp" aria-labelledby="navigationTitle" aria-describedby="navigationIntro">
     <div class="guide-host"><img src="./assets/images/mascot/pointing.png" alt=""><img class="guide-star" src="./assets/images/ui/gold-star.png" alt=""></div>
@@ -77,8 +98,8 @@
     <button id="navigationDone" class="menu-resume" type="button"><span data-i18n="navigationDone">Oke, mengerti!</span><img src="./assets/images/ui/next.png" alt=""></button>
   </dialog>
   <audio id="backgroundMusic" src="./assets/audio/music/background-music.mp3?v=baby-baby-607610" preload="auto" loop hidden></audio>
-  <script src="./js/i18n.js" defer></script>
-  <script src="./js/game.js" defer></script>
+  <script src="./js/i18n.js?v=20261002-edu8" defer></script>
+  <script src="./js/game.js?v=20261002-edu10" defer></script>
 
 </body>
 </html>

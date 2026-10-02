@@ -33,6 +33,12 @@
     .stat { display: flex; gap: var(--space-3); align-items: baseline; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
     .stat strong { color: #63487c; font-size: 22px; letter-spacing: 0; font-variant-numeric: tabular-nums; }
     #score { color: var(--rose); } #timer { color: var(--mint); } #enemyCount { color: var(--sunshine); }
+    .heart-stat > span:first-child, #hearts { color: #d64b7f; }
+    .heart-stat > span:first-child { display: inline-grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; font-size: 28px; line-height: 1; }
+    #hearts { font-size: 17px; letter-spacing: 2px; white-space: nowrap; }
+    .life-progress { display: inline-flex; padding: 3px 5px; border: 1px solid #efbad0; border-radius: 999px; background: #fff0f7; color: #d64b7f; font-size: 9px; font-weight: 800; line-height: 1; letter-spacing: 1px; white-space: nowrap; }
+    .life-progress.earned { animation: life-earned .65s ease-out; }
+    @keyframes life-earned { 35% { background: #fff1a8; color: #d76b45; box-shadow: 0 0 18px #ffcf69; transform: scale(1.28); } }
     /* The arena fills the available space; the world adapts to its aspect ratio. */
     .arena { position: relative; flex: 1; min-height: 0; overflow: hidden; background: #faf5ff; }
     /* CSS keeps the grid crisp at any canvas scale, including Chrome zoom. */
@@ -62,6 +68,13 @@
     button:hover { background: #ffc6e8; transform: translateY(-1px); }
     button:focus-visible { outline: 3px solid #7952aa; outline-offset: 5px; }
     .hint { margin-top: var(--space-1); font-size: 11px; color: var(--muted); }
+    .rescue-stars { display: flex; gap: 14px; margin: 4px 0; }
+    .rescue-stars button { width: 66px; height: 66px; min-height: 0; padding: 7px; border: 0; border-radius: 50%; background: #fff8cf; box-shadow: 0 5px 18px #8c66aa2b; animation: rescue-float 1.5s ease-in-out infinite alternate; }
+    .rescue-stars button:nth-child(2) { animation-delay: -.45s; }
+    .rescue-stars button:nth-child(3) { animation-delay: -.9s; }
+    .rescue-stars button img { width: 100%; height: 100%; }
+    .rescue-stars button.found { opacity: .25; transform: scale(.7); pointer-events: none; animation: none; }
+    @keyframes rescue-float { to { transform: translateY(-7px) rotate(5deg); } }
     footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2) var(--space-4); color: var(--muted); font-size: 12px; line-height: 1.8; }
     .controls { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); }
     .control-group { white-space: nowrap; }
@@ -105,11 +118,15 @@ dialog::backdrop { background: #34214866; backdrop-filter: blur(5px); }
   .hud { padding: 8px 12px; gap: 8px; }
   .stat { gap: 5px; font-size: 10px; letter-spacing: 0; }
   .stat strong { font-size: 19px; }
+  .stat > span:not(:first-child) { display: none; }
+  #hearts { display: inline; font-size: 15px; }
+  .life-progress { display: inline-flex !important; padding: 3px 4px; font-size: 7px; letter-spacing: 0; }
   .cabinet { border-radius: 14px; }
   .hero-art, .panel > .eyebrow, .hint { display: none; }
   h2 { font-size: 28px; }
   .description { font-size: 14px; line-height: 1.6; }
 }
+@media (prefers-reduced-motion: reduce) { .rescue-stars button { animation: none; } }
 @media (max-height: 550px) {
   :root { --page-space: 4px; --section-gap: 4px; --panel-space: 10px; }
   h1 { font-size: 18px; }
@@ -204,7 +221,10 @@ dialog { background: #fffdf9; border: 3px solid #dac4e4; border-radius: 28px; ou
   .hud { padding-top: 3px; padding-bottom: 3px; }
   .stat img { height: 22px; }
 }
-@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+  .life-progress.earned { animation: none; }
+}
 
 @media (max-width: 360px) {
   .hud { padding-left: 8px; padding-right: 8px; gap: 5px; }
@@ -216,3 +236,44 @@ dialog { background: #fffdf9; border: 3px solid #dac4e4; border-radius: 28px; ou
 
 .new-game-button { padding: 8px 16px; min-height: 44px; background: #f3e8fb; font-size: 13px; }
 .new-game-button img { width: 25px; height: 25px; }
+
+/* Educational missions stay compact so the arena remains the main focus. */
+.learning-mission { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; align-items: center; gap: 10px; max-width: min(330px, calc(100% - 24px)); padding: 7px 12px 7px 8px; border: 2px solid #d9bee6; border-radius: 18px; background: #fffdf2e8; box-shadow: 0 4px 0 #bda7cd88, 0 8px 22px #54396c20; backdrop-filter: blur(4px); pointer-events: none; }
+.learning-mission img { width: 58px; height: 58px; flex: 0 0 auto; object-fit: contain; filter: drop-shadow(0 2px 2px #62477530); }
+.learning-mission div { display: grid; min-width: 0; }
+.learning-mission span { color: #8e5ba5; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.learning-mission strong { overflow: hidden; color: #3f2853; font-size: 27px; line-height: 1; letter-spacing: .03em; text-overflow: ellipsis; white-space: nowrap; }
+.learning-mission small { min-height: 14px; color: #9b65aa; font-size: 14px; font-weight: 700; line-height: 1; letter-spacing: .12em; }
+.mission-success { position: absolute; z-index: 5; inset: 50% auto auto 50%; width: clamp(118px, 18vmin, 190px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; filter: drop-shadow(0 8px 2px #76538e35) drop-shadow(0 0 24px #fff4a5); animation: mission-star-pop 1.1s ease-out both; }
+.mission-success img { width: 100%; height: 100%; object-fit: contain; }
+@keyframes mission-star-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.35) rotate(-12deg); }
+  28% { opacity: 1; transform: translate(-50%, -50%) scale(1.14) rotate(5deg); }
+  58% { transform: translate(-50%, -50%) scale(.96) rotate(-2deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.08) rotate(0); }
+}
+@keyframes mission-star-fade { from { opacity: 0; } 25%, 75% { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mission-success { animation: mission-star-fade .45s ease-out both; } }
+
+#showAlbum { width: 100%; background: linear-gradient(#fff7cd, #f5dfa0); border-color: #c7a759; box-shadow: 0 3px 0 #b9984c; }
+#showAlbum img { width: 36px; height: 36px; }
+.album-intro { margin: 10px 0; color: var(--muted); line-height: 1.5; }
+.album-summary { display: flex; align-items: center; gap: 8px; margin: 10px 0 14px; padding: 8px 12px; border-radius: 14px; background: #fff5cd; color: #725234; }
+.album-summary img { width: 32px; height: 32px; object-fit: contain; }
+.album-summary strong { font-size: 19px; }
+.album-summary span { font-size: 12px; }
+.alphabet-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.album-letter { position: relative; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; border: 2px solid #e2d6e8; border-radius: 12px; background: #f4eef6; }
+.album-letter img { width: 82%; height: 82%; object-fit: contain; }
+.album-letter.locked img { filter: grayscale(1); opacity: .14; }
+.album-letter.locked::after { content: '?'; position: absolute; color: #9a83aa; font-size: 18px; font-weight: 700; }
+.album-letter.found { border-color: #d2ae4d; background: #fff9d8; box-shadow: inset 0 0 0 2px #fff; }
+
+@media (max-width: 600px) {
+  .learning-mission { top: 8px; left: 8px; gap: 7px; max-width: calc(100% - 16px); padding: 5px 10px 5px 6px; }
+  .learning-mission img { width: 39px; height: 39px; }
+  .learning-mission strong { font-size: 22px; }
+  .learning-mission small { font-size: 12px; }
+  .heart-stat > span:first-child { width: 23px; height: 23px; flex-basis: 23px; font-size: 23px; }
+  .alphabet-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}

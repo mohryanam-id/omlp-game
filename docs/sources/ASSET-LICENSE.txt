@@ -8,3 +8,4 @@ Alte Haas Grotesk Regular/Bold included from the kit Font folder; distribution n
 UI reference: https://craftpix.net/freebies/free-alphabet-vector-asset-kit-for-education-games/
 
 Navigation: navigation-star.png = Object/PNG/star.png; touch-shine.png = UI Elements/Effects/PNG/Shine0.png. Original kit images reused for touch destinations and feedback.
+Learning missions reuse the kit's A–Z colored alphabet PNGs and illustrated Object/PNG vocabulary set under assets/images/learning/. These files remain unchanged apart from their repository paths.
