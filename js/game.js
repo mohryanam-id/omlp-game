@@ -43,6 +43,9 @@
       { object: 'star', id: 'bintang', en: 'stars' }, { object: 'umbrella', id: 'payung', en: 'umbrellas' },
       { object: 'xylophone', id: 'xilofon', en: 'xylophones' }
     ];
+    const ANIMAL_OBJECTS = new Set(['cat', 'dog', 'unicorn', 'whale', 'zebra']);
+    const COLLECTION_ITEMS = [...new Map([...LEARNING_PAIRS, ...COUNTING_OBJECTS]
+      .map(item => [item.object, item])).values()];
     for (const letter of LETTERS) ASSET_DATA[`letter${letter}`] = `./assets/images/learning/letters/${letter}0.png`;
     for (const { object } of LEARNING_PAIRS) ASSET_DATA[`learn-${object}`] = `./assets/images/learning/objects/${object}.png`;
     for (const { object } of COUNTING_OBJECTS) ASSET_DATA[`learn-${object}`] = `./assets/images/learning/objects/${object}.png`;
@@ -237,10 +240,19 @@
     const lifeProgressEl = document.getElementById('lifeProgress');
     const alphabetAlbum = document.getElementById('alphabetAlbum');
     const alphabetGrid = document.getElementById('alphabetGrid');
+    const animalGrid = document.getElementById('animalGrid');
+    const itemGrid = document.getElementById('itemGrid');
     const ALBUM_KEY = 'one-more-unicorn.alphabet-album';
+    const COLLECTION_KEY = 'one-more-unicorn.item-album';
     const albumLetters = new Set();
+    const albumItems = new Set();
     try {
       for (const letter of JSON.parse(localStorage.getItem(ALBUM_KEY) || '[]')) if (LETTERS.includes(letter)) albumLetters.add(letter);
+    } catch (_) {}
+    try {
+      for (const object of JSON.parse(localStorage.getItem(COLLECTION_KEY) || '[]')) {
+        if (COLLECTION_ITEMS.some(item => item.object === object)) albumItems.add(object);
+      }
     } catch (_) {}
     const STORAGE_KEY = 'one-more-love.best';
     let best = 0;
@@ -289,9 +301,24 @@
     function saveAlbum() {
       try { localStorage.setItem(ALBUM_KEY, JSON.stringify([...albumLetters].sort())); } catch (_) {}
     }
+    function saveCollectionAlbum() {
+      try { localStorage.setItem(COLLECTION_KEY, JSON.stringify([...albumItems].sort())); } catch (_) {}
+    }
     function addAlbumLetter(letter) {
       if (albumLetters.has(letter)) return;
       albumLetters.add(letter); saveAlbum();
+    }
+    function addAlbumItem(object) {
+      if (albumItems.has(object) || !COLLECTION_ITEMS.some(item => item.object === object)) return;
+      albumItems.add(object); saveCollectionAlbum();
+    }
+    function collectionName(item) { return language === 'id' ? (item.id || item.en) : item.en; }
+    function makeCollectionCard(item) {
+      const found = albumItems.has(item.object), card = document.createElement('div'), image = document.createElement('img');
+      card.className = `album-item ${found ? 'found' : 'locked'}`;
+      card.setAttribute('aria-label', t(found ? 'itemFound' : 'itemLocked', { name: collectionName(item) }));
+      image.src = ASSET_DATA[`learn-${item.object}`]; image.alt = found ? collectionName(item) : '';
+      card.append(image); return card;
     }
     function renderAlbum() {
       const cards = LETTERS.map(letter => {
@@ -302,7 +329,11 @@
         card.append(image); return card;
       });
       alphabetGrid.replaceChildren(...cards);
-      document.getElementById('albumCount').textContent = `${albumLetters.size} / 26`;
+      const animals = COLLECTION_ITEMS.filter(item => ANIMAL_OBJECTS.has(item.object));
+      const items = COLLECTION_ITEMS.filter(item => !ANIMAL_OBJECTS.has(item.object));
+      animalGrid?.replaceChildren(...animals.map(makeCollectionCard));
+      itemGrid?.replaceChildren(...items.map(makeCollectionCard));
+      document.getElementById('albumCount').textContent = `${albumLetters.size + albumItems.size} / ${LETTERS.length + COLLECTION_ITEMS.length}`;
     }
     function updateMissionCard() {
       const missionComplete = state === 'playing' && missionState?.type === 'complete';
@@ -311,6 +342,10 @@
       if (!missionState) return;
       missionKind.textContent = t('missionShort');
       if (missionState.type === 'complete') {
+        missionProgress.textContent = '';
+        missionSuccess.classList?.remove('is-celebrating');
+        void missionSuccess.offsetWidth;
+        missionSuccess.classList?.add('is-celebrating');
         missionSuccess.setAttribute('aria-label', `${missionState.message}. ${t('nextMission')}`);
       } else if (missionState.type === 'count') {
         const name = pairName(missionState.pair);
@@ -318,17 +353,11 @@
         missionText.textContent = `× ${missionState.target}`;
         missionProgress.textContent = missionState.target === 1 ? '' : '●'.repeat(missionState.collected) + '○'.repeat(missionState.target - missionState.collected);
         missionCard.setAttribute('aria-label', `${t('collectCount', { count: missionState.target, name })}. ${t('countProgress', { current: missionState.collected, count: missionState.target })}`);
-      } else if (missionState.phase === 'letter') {
+      } else if (missionState.type === 'letter') {
         missionIcon.src = ASSET_DATA[`letter${missionState.pair.letter}`];
         missionText.textContent = '= ?';
-        missionProgress.textContent = missionState.wrongAttempts >= 2 ? '✨' : missionState.feedback ? '↺' : '● ● ●';
+        missionProgress.textContent = missionState.wrongAttempts >= 2 ? '✨' : missionState.feedback ? '↺' : '';
         missionCard.setAttribute('aria-label', `${t('findLetter', { letter: missionState.pair.letter })}. ${missionState.wrongAttempts >= 2 ? t('hintGlow') : missionState.feedback ? t('tryAnother') : t('chooseLetter')}`);
-      } else {
-        const name = pairName(missionState.pair);
-        missionIcon.src = ASSET_DATA[`learn-${missionState.pair.object}`];
-        missionText.textContent = '× 1';
-        missionProgress.textContent = '';
-        missionCard.setAttribute('aria-label', `${t('findObject', { name })}. ${t('letterPair', { letter: missionState.pair.letter, name })}`);
       }
     }
     function startLearningMission() {
@@ -338,7 +367,7 @@
         const candidates = pool.filter(pair => pair.letter !== lastMissionLetter);
         const pair = candidates[Math.floor(Math.random() * candidates.length)] || pool[0];
         lastMissionLetter = pair.letter;
-        missionState = { type: 'letter-object', phase: 'letter', pair, wrongAttempts: 0, feedback: false };
+        missionState = { type: 'letter', pair, wrongAttempts: 0, feedback: false };
         const distractors = shuffled(LETTERS.filter(letter => letter !== pair.letter)).slice(0, 2);
         for (const letter of shuffled([pair.letter, ...distractors])) {
           learningTokens.push(makeLearningToken(`letter${letter}`, { letter, correct: letter === pair.letter }));
@@ -352,7 +381,7 @@
       updateMissionCard();
     }
     function rewardLearningMission(x, y, message) {
-      score++; saveBest(); playSfx('collect'); react(player, 'happy');
+      score++; saveBest(); addAlbumItem('unicorn'); playSfx('collect'); react(player, 'happy');
       recordUnicornForLife();
       pickups.push({ x, y, life: .7, flip: 1 });
       for (let i = 0; i < 14; i++) {
@@ -361,31 +390,28 @@
           life, duration: life, angle, spin: random(-4, 4), radius: random(4, 7) });
       }
       learningTokens = []; missionNumber++;
-      missionState = { type: 'complete', message, transition: reducedMotion.matches ? .45 : 1.1 };
+      missionState = { type: 'complete', message, transition: reducedMotion.matches ? .75 : 1.55 };
       updateMissionCard(); updateHUD();
     }
     function touchLearningToken(index) {
       const token = learningTokens[index];
       if (!token || token.cooldown > 0 || !missionState || missionState.type === 'complete') return;
       if (missionState.type === 'count') {
-        learningTokens.splice(index, 1); missionState.collected++; playSfx('uiSelect');
+        learningTokens.splice(index, 1); missionState.collected++; addAlbumItem(missionState.pair.object); playSfx('uiSelect');
         if (missionState.collected >= missionState.target) rewardLearningMission(token.x, token.y,
           t('countComplete', { count: missionState.target, name: pairName(missionState.pair) }));
         else updateMissionCard();
         return;
       }
-      if (missionState.phase === 'letter' && !token.correct) {
+      if (missionState.type === 'letter' && !token.correct) {
         token.cooldown = 1.2; token.bounce = .55; missionState.feedback = true; missionState.wrongAttempts++;
         if (missionState.wrongAttempts >= 2) for (const item of learningTokens) item.highlight = item.correct;
         react(player, 'thinking'); playSfx('uiClose'); updateMissionCard(); return;
       }
-      if (missionState.phase === 'letter') {
-        addAlbumLetter(missionState.pair.letter); playSfx('uiSelect');
-        missionState.phase = 'object'; learningTokens = [makeLearningToken(`learn-${missionState.pair.object}`, { correct: true })];
-        updateMissionCard(); return;
+      if (missionState.type === 'letter') {
+        addAlbumLetter(missionState.pair.letter); addAlbumItem(missionState.pair.object); playSfx('uiSelect');
+        rewardLearningMission(token.x, token.y, t('letterComplete', { letter: missionState.pair.letter }));
       }
-      rewardLearningMission(token.x, token.y,
-        t('pairComplete', { letter: missionState.pair.letter, name: pairName(missionState.pair) }));
     }
     function updateLearning(dt) {
       if (!missionState) return;
@@ -452,9 +478,11 @@
     function navigationHidden() {
       try { return localStorage.getItem(NAVIGATION_KEY) === 'true'; } catch (_) { return false; }
     }
-    function openNavigationHelp() {
+    // The first visit opens with a visual walkthrough. It is remembered after
+    // dismissal, while the About menu can always reopen it for a refresher.
+    function openNavigationHelp(isFirstVisit = false) {
       pause(); clearMovement();
-      hideNavigation.checked = navigationHidden();
+      hideNavigation.checked = isFirstVisit ? true : navigationHidden();
       navigationHelp.showModal();
     }
     document.getElementById('navigationDone').addEventListener('click', () => { navigationHelp.close(); playUi(); });
@@ -779,7 +807,7 @@
               vy: Math.sin(angle) * speed - 30, life, duration: life,
               angle: random(0, Math.PI * 2), spin: random(-5, 5), radius: random(3, 6) });
           }
-          score++; saveBest(); recordUnicornForLife();
+          score++; saveBest(); addAlbumItem('unicorn'); recordUnicornForLife();
           if (collected.dropped) { unicorns.splice(i, 1); i--; }
           else unicorns[i] = spawnUnicorn();
         }
@@ -996,7 +1024,7 @@
     applyLanguage();
     fitToViewport();
     resetWorld();
-    if (!navigationHidden()) openNavigationHelp();
+    if (!navigationHidden()) openNavigationHelp(true);
     const layoutObserver = new ResizeObserver(fitToViewport);
     layoutObserver.observe(arena);
     layoutObserver.observe(panel);

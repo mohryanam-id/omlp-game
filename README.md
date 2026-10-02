@@ -72,8 +72,7 @@ HTML rewrite is needed for this game.
   illustrated WASD keys, trophy, victory confetti, and bundled kit fonts.
 - Choose Clouds, Meadow, Night, or Beach in Settings; the scene is saved locally.
 - Open the ☰ menu for sound, language, duration, and your best score. Opening it pauses the game.
-- A movement guide appears once per page/app launch, with a saved “Don’t show again” option.
-  Reopen it from About to review controls or uncheck the option to enable it again.
+- A visual tutorial appears the first time the game opens. It explains the mission, hearts, lions, and controls; reopen it from About whenever you need a reminder.
 - About contains instructions and the creator credit. Mobile uses direct touch with no joystick.
 - Language: Indonesian by default. Choose Indonesia or English in Settings;
   the preference is saved. Switching language during play pauses the game.
@@ -82,7 +81,7 @@ HTML rewrite is needed for this game.
 - Cozy play is the default: the princess has three hearts, a hit releases one collected
   unicorn, and a short immunity window prevents repeated hits. When all hearts are gone,
   touching three rescue stars restores one heart and safely continues the same game.
-- Learning missions alternate between matching a letter with an illustrated object and
+- Learning missions alternate between choosing the correct letter from three choices and
   counting 1–5 objects. A different letter gives a gentle hint without a penalty; two
   attempts make the target glow. Correct letters remain saved in the A–Z album.
 - Gentle UI cues accompany menu opening/closing and changed settings. Each unicorn pickup plays its own overlapping sound; lion spawns have a short cue, and the final three seconds have soft ticks.
